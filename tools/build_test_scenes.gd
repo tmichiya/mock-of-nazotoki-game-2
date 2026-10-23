@@ -7,6 +7,7 @@ const S := { FLAT = 0, N = 1, S = 2, E = 3, W = 4 }
 
 var builders := {
 	"terrain": _build_terrain,
+	"hands": _build_hands,
 }
 
 
@@ -113,3 +114,20 @@ func _build_terrain() -> void:
 	slope(t, Vector2i(2, 5), 0, S.E)     # おまけ:0→1段(右へ上る)
 	add_common(root, Vector2(4, 10), Vector2(8, 1))
 	save(root, "res://parts/terrain/test_terrain.tscn")
+
+
+# ---------------------------------------------------------------- C・D 腕と手つなぎ
+
+func _build_hands() -> void:
+	var root := new_world("res://parts/hands/test_hands.gd",
+		"【腕・手つなぎ】ポーズ / 片手で回転して離すと飛ぶ / 両手を離すと反動 / 1段の崖はつないだまま降りられる / 2段の崖は宙づり→揺らす→上の人が離れると引き上げ")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 20, 14), 0)
+	fill(t, Rect2i(12, 0, 8, 8), 1)          # 1段:右上
+	fill(t, Rect2i(15, 8, 5, 6), 2)          # 2段:右下
+	slope(t, Vector2i(11, 2), 0, S.E)        # 0→1段
+	slope(t, Vector2i(16, 7), 1, S.S)        # 1→2段(手前へ上る)
+	add_common(root, Vector2(5, 5), Vector2(5, 5))
+	root.get_node("SpawnPoint2").position += Vector2(24, 0)
+	inst(root, "res://parts/hands/hand_link_monitor.tscn")
+	save(root, "res://parts/hands/test_hands.tscn")
