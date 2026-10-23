@@ -18,6 +18,7 @@ var builders := {
 	"bird": _build_bird,
 	"offering": _build_offering,
 	"extras": _build_extras,
+	"catalog": _build_catalog,
 }
 
 
@@ -390,3 +391,205 @@ func _build_extras() -> void:
 	part(root, "trumpet", "Trumpet", Vector2(17, 9))
 	add_common(root, Vector2(3, 13), Vector2(5, 13))
 	save(root, "res://parts/puzzle/tests/test_extras.tscn")
+
+
+# ---------------------------------------------------------------- 部品カタログ
+
+func group(root: Node, nm: String) -> Node2D:
+	var g := Node2D.new()
+	g.name = nm
+	g.y_sort_enabled = true
+	add(root, g)
+	return g
+
+
+func label(parent: Node, root: Node, text: String, c: Vector2) -> void:
+	var l: Node = load("res://parts/misc/world_label.tscn").instantiate()
+	l.text = text
+	l.position = cell_center(c) - Vector2(16, 12)
+	parent.add_child(l)
+	l.owner = root
+
+
+func ipart(root: Node, parent: Node, kind: String, nm: String, c: Vector2) -> Node:
+	var n := inst(root, "res://parts/puzzle/%s.tscn" % kind, cell_center(c), parent)
+	n.name = nm
+	return n
+
+
+func iemit(root: Node, parent: Node, nm: String, c: Vector2, shape: String, size: float) -> Node:
+	var e := inst(root, "res://parts/sound_wave/sound_emitter.tscn", cell_center(c), parent)
+	e.name = nm
+	e.source_name = nm
+	e.shape = load("res://parts/sound_wave/shapes/%s.tres" % shape)
+	e.size = size
+	return e
+
+
+func ircv(root: Node, parent: Node, nm: String, c: Vector2) -> Node:
+	var r := inst(root, "res://parts/sound_wave/wave_receiver.tscn", cell_center(c), parent)
+	r.name = nm
+	r.radius = 10.0
+	return r
+
+
+func _build_catalog() -> void:
+	var root := new_world("res://tests/catalog.gd",
+		"【部品カタログ】全部品。1:段のちがう音 2:楕円 3:重なる石 4:綿毛 5:カエル 6:動物 / F1 段番号 F2 波の範囲 F3 誰の目で見るか")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 66, 39), 0)
+
+	# --- 地形(0,0)
+	var o := Vector2(0, 0)
+	var g := group(root, "TerrainDemo")
+	fill(t, Rect2i(3, 3, 14, 8), 1)
+	fill(t, Rect2i(6, 4, 8, 5), 2)
+	fill(t, Rect2i(8, 5, 4, 3), 3)
+	slope(t, Vector2i(9, 11), 0, S.N)
+	slope(t, Vector2i(17, 6), 0, S.W)
+	slope(t, Vector2i(2, 6), 0, S.E)
+	slope(t, Vector2i(10, 2), 0, S.S)
+	slope(t, Vector2i(14, 6), 1, S.W)
+	slope(t, Vector2i(10, 8), 2, S.N)
+	label(g, root, "A 地形:0〜3段と斜面\n崖の縁で A/Space を押すと滑空", Vector2(1, 1))
+
+	# --- 音の波(1,0)
+	o = Vector2(22, 0)
+	g = group(root, "Waves")
+	fill(t, Rect2i(int(o.x) + 8, 2, 5, 5), 1)
+	fill(t, Rect2i(int(o.x) + 10, 3, 2, 2), 2)
+	iemit(root, g, "E0", o + Vector2(4, 4), "impact", 2.0)
+	iemit(root, g, "E1", o + Vector2(9, 3), "voice", 1.8)
+	ircv(root, g, "R0", o + Vector2(2, 4))
+	ircv(root, g, "R1", o + Vector2(15, 3))
+	var wall := inst(root, "res://parts/sound_wave/sound_wall.tscn", cell_center(o + Vector2(10, 9.5)), g)
+	wall.name = "Ellipse"
+	wall.ellipse_size = Vector2(200, 72)
+	wall.make_ellipse()
+	wall.block_bodies = false
+	var c := sqrt(100.0 * 100.0 - 36.0 * 36.0)
+	var ef := iemit(root, g, "EFocus", Vector2.ZERO, "voice", 1.2)
+	ef.position = cell_center(o + Vector2(10, 9.5)) - Vector2(c, 0)
+	var zone := inst(root, "res://parts/sound_wave/sound_reflect_zone.tscn", cell_center(o + Vector2(8, 4.5)), g)
+	zone.name = "NoReflectZone"
+	zone.polygon = PackedVector2Array([Vector2(-20, -40), Vector2(4, -40), Vector2(4, 40), Vector2(-20, 40)])
+	label(g, root, "E 音の波:1キーで0段と1段の音源\n2キーで楕円の焦点。赤い範囲の崖は跳ね返さない", o + Vector2(1, 1))
+
+	# --- 扉・スイッチ・看板(2,0)
+	o = Vector2(44, 0)
+	g = group(root, "Doors")
+	ipart(root, g, "floor_switch", "S1", o + Vector2(3, 3))
+	ipart(root, g, "floor_switch", "S2", o + Vector2(7, 3))
+	var grp := ipart(root, g, "switch_group", "Group", Vector2.ZERO)
+	grp.switches.assign([NodePath("../S1"), NodePath("../S2")])
+	var door := ipart(root, g, "door", "Door", o + Vector2(5, 6))
+	door.width = 48.0
+	wire(grp, "solved", door, "open")
+	var sign := ipart(root, g, "symbol_sign", "Sign", o + Vector2(13, 4))
+	sign.symbols = PackedInt32Array([0, 4, 8, 12])
+	var who := [["SignP1", 1, o + Vector2(11, 9)], ["SignP2", 2, o + Vector2(14, 9)], ["SignLinked", 3, o + Vector2(17, 9)]]
+	for w in who:
+		var sg := ipart(root, g, "symbol_sign", w[0], w[2])
+		sg.symbols = PackedInt32Array([w[1] + 1, w[1] + 5])
+		var ov: Node = load("res://parts/puzzle/only_visible_to.tscn").instantiate()
+		ov.name = "OnlyVisibleTo"
+		ov.visible_to = w[1]
+		sg.add_child(ov)
+		ov.owner = root
+	label(g, root, "H 二人で S1・S2 を同時に踏むと扉が開く\n看板:左=1人目だけ 中=2人目だけ 右=手をつないだ時だけ", o + Vector2(1, 1))
+
+	# --- レバー・動物(0,1)
+	o = Vector2(0, 13)
+	g = group(root, "Animals")
+	var lever := ipart(root, g, "lever", "Lever", o + Vector2(4, 4))
+	lever.positions = 3
+	var e1 := ipart(root, g, "voice_eater", "Eater1", o + Vector2(11, 6))
+	e1.direction_map = PackedInt32Array([0, 2, 4])
+	wire(lever, "position_changed", e1, "set_direction_index")
+	var e2 := ipart(root, g, "voice_eater", "Eater2", o + Vector2(18, 6))
+	e2.direction = 4
+	e2.spit_shape = 1
+	iemit(root, g, "E", o + Vector2(11, 2.5), "generic", 0.7)
+	label(g, root, "I・J 二人で手をつないでレバーを引く→動物の向きが変わる\n6キー:音を動物に食べさせる(向いた方へ吐き出す)", o + Vector2(1, 1))
+
+	# --- カエル(1,1 左)と棒(1,1 右)
+	o = Vector2(22, 13)
+	g = group(root, "Frog")
+	var frog := ipart(root, g, "sleeping_frog", "Frog", o + Vector2(5, 5))
+	iemit(root, g, "Noise", o + Vector2(5, 8), "impact", 1.6)
+	var reset := ipart(root, g, "puzzle_reset", "Reset", o + Vector2(3, 10))
+	for rp in [["RP1", 1, o + Vector2(3, 10)], ["RP2", 2, o + Vector2(4, 10)]]:
+		var n: Node = load("res://parts/puzzle/reset_point.tscn").instantiate()
+		n.name = rp[0]
+		n.player_index = rp[1]
+		n.position = cell_center(rp[2]) - reset.position
+		reset.add_child(n)
+		n.owner = root
+	reset.parts.assign([NodePath("../Frog")])
+	frog.reset_on_angry = NodePath("../Reset")
+	label(g, root, "K 5キー:音を出す。何度も鳴らすと\n寝返り→薄目→怒る→やり直し", o + Vector2(1, 1))
+	var gp := group(root, "Pole")
+	fill(t, Rect2i(int(o.x) + 15, 16, 1, 1), 2)
+	var pole := ipart(root, gp, "long_pole", "Pole", o + Vector2(15, 8))
+	label(gp, root, "L 長い棒:両端で手を伸ばして握る\n柱に当てると音の波", o + Vector2(11, 1))
+
+	# --- 鳥(2,1)
+	o = Vector2(44, 13)
+	g = group(root, "Birds")
+	var bird_names := []
+	var notes := [60.0, 64.0, 67.0]
+	for i in range(3):
+		var b := ipart(root, g, "singing_bird", "Bird%d" % i, o + Vector2(6 + i * 4, 3))
+		b.notes = PackedFloat32Array([notes[i]])
+		bird_names.append(NodePath("../Bird%d" % i))
+		var bt := ipart(root, g, "instrument", "Bottle%d" % i, o + Vector2(6 + i * 4, 7))
+		bt.note = notes[i]
+		bt.size = 1.4
+	var chord := ipart(root, g, "chord_judge", "Chord", Vector2.ZERO)
+	chord.birds.assign(bird_names)
+	label(g, root, "M 歌うか、瓶の近くで X/R を押す\n3羽がド・ミ・ソをそろえると和音成功", o + Vector2(1, 1))
+
+	# --- かけらと捧げる場所(0,2)
+	o = Vector2(0, 26)
+	g = group(root, "Offering")
+	for i in range(3):
+		ipart(root, g, "sound_shard", "Shard%d" % i, o + Vector2(3 + i * 3, 3))
+	var off := ipart(root, g, "offering_place", "Offering", o + Vector2(6, 7))
+	off.required = 3
+	var acts := [["Appear", 0], ["Disappear", 1], ["Fall", 2], ["Move", 3]]
+	for i in range(acts.size()):
+		var r := ipart(root, g, "island_change_reactor", acts[i][0], o + Vector2(12 + i * 2.5, 5))
+		r.action = acts[i][1]
+	var r2 := ipart(root, g, "island_change_reactor", "Stage2", o + Vector2(15, 9))
+	r2.stage = 2
+	label(g, root, "N かけらを3つ拾って円に立つと歌の波\n届くと段階1の物が 現れる/消える/落ちる/動く", o + Vector2(1, 1))
+
+	# --- 余裕があれば(1,2)
+	o = Vector2(22, 26)
+	g = group(root, "Extras")
+	var fl := inst(root, "res://parts/props/fluff.tscn", cell_center(o + Vector2(5, 3)), g)
+	fl.name = "Fluff"
+	iemit(root, g, "EFluff", o + Vector2(3, 3), "generic", 1.4)
+	ipart(root, g, "overlap_stone", "Stone", o + Vector2(14, 3))
+	iemit(root, g, "EA", o + Vector2(11, 3), "generic", 0.8)
+	iemit(root, g, "EB", o + Vector2(17, 3), "generic", 0.8)
+	var ph := ipart(root, g, "string_phone", "Phone", o + Vector2(7, 8))
+	ph.length = 120.0
+	ipart(root, g, "trumpet", "Trumpet", o + Vector2(15, 8))
+	label(g, root, "O 4:綿毛を押す 3:重なる点の石\n糸電話は両端を握って張る / ラッパはつかむ", o + Vector2(1, 1))
+
+	# --- 手つなぎ(2,2)
+	o = Vector2(44, 26)
+	g = group(root, "HandsArea")
+	fill(t, Rect2i(int(o.x) + 12, 27, 9, 5), 1)
+	fill(t, Rect2i(int(o.x) + 12, 32, 9, 6), 2)
+	slope(t, Vector2i(int(o.x) + 11, 28), 0, S.E)
+	slope(t, Vector2i(int(o.x) + 16, 31), 1, S.S)
+	label(g, root, "D 手つなぎ:広場で片手の回転投げ・両手の反動\n右の崖(1段・2段)はつないだまま降りる・宙づり", o + Vector2(1, 1))
+
+	# 共通
+	inst(root, "res://parts/hands/hand_link_monitor.tscn")
+	inst(root, "res://parts/voice/voice_monitor.tscn")
+	inst(root, "res://parts/sound_wave/debug_options.tscn")
+	add_common(root, Vector2(27, 22), Vector2(29, 22))
+	save(root, "res://catalog.tscn")
