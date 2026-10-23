@@ -10,6 +10,13 @@ extends Control
 	"res://parts/sound_wave/test_sound_wave.tscn",
 	"res://parts/voice/test_voice.tscn",
 	"res://tests/test_net.tscn",
+	"res://parts/puzzle/tests/test_general.tscn",
+	"res://parts/puzzle/tests/test_lever_animal.tscn",
+	"res://parts/puzzle/tests/test_frog.tscn",
+	"res://parts/puzzle/tests/test_pole.tscn",
+	"res://parts/puzzle/tests/test_bird.tscn",
+	"res://parts/puzzle/tests/test_offering.tscn",
+	"res://parts/puzzle/tests/test_extras.tscn",
 ])
 
 @onready var _ip: LineEdit = %IP

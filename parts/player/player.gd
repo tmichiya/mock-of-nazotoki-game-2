@@ -88,6 +88,10 @@ var input_override = null
 ## 手つなぎ中に Hands が決める腕の向かう先(画面上のグローバル座標)。null なら通常
 var arm_target_left = null
 var arm_target_right = null
+## 手でつかんでいる物 [左, 右](部品が設定する。つかんでいる手は手つなぎに使われない)
+var held_objects: Array = [null, null]
+## 声の波の形を変える道具(ラッパなど)。{ dir = Vector2, spread = 角度, size_scale = 倍率 } か空
+var voice_modifier: Dictionary = {}
 ## 腕の張り具合 0(緩い)〜1(張っている)
 var arm_tension_left := 0.0
 var arm_tension_right := 0.0

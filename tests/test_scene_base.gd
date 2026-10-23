@@ -34,3 +34,51 @@ func _steps() -> Array:
 
 func set_status(text: String) -> void:
 	_label.text = help_text + "\n" + COMMON_HELP + "\n" + text
+
+
+var _sig_log: Array = []
+
+
+## 子の部品のシグナルを画面とログに出す(確認用)
+func watch(node_path: String, signals: Array) -> void:
+	var n := get_node_or_null(node_path)
+	if n == null:
+		push_warning("watch: %s が見つかりません" % node_path)
+		return
+	for sname in signals:
+		var argc := 0
+		for info in n.get_signal_list():
+			if info.name == sname:
+				argc = info.args.size()
+		var cb: Callable
+		match argc:
+			0: cb = func(): _sig(node_path, sname, [])
+			1: cb = func(a): _sig(node_path, sname, [a])
+			2: cb = func(a, b): _sig(node_path, sname, [a, b])
+			_: cb = func(a, b, c): _sig(node_path, sname, [a, b, c])
+		n.connect(sname, cb)
+
+
+func _sig(node_path: String, sname: String, args: Array) -> void:
+	var line := "[SIG] %s.%s(%s)" % [node_path, sname, ", ".join(args.map(func(x): return str(x)))]
+	print(line)
+	_sig_log.append(line)
+	if _sig_log.size() > 8:
+		_sig_log.pop_front()
+	set_status("\n".join(_sig_log))
+
+
+## プレイヤーを地面の位置 pos へ置く(この端末で動かしている人だけ)
+func place(index: int, pos: Vector2) -> void:
+	var p := World.get_player_by_index(index) as Player
+	if p == null or not p.is_local:
+		return
+	p.link_controlled = false
+	p.state = Player.State.WALK
+	p.velocity = Vector2.ZERO
+	p.global_position = pos
+	p.height = World.height_at(pos)
+
+
+static func cell(c: Vector2) -> Vector2:
+	return (c + Vector2(0.5, 0.5)) * Vector2(32, 24)

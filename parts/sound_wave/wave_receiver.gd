@@ -49,7 +49,7 @@ func _enter_tree() -> void:
 
 
 func is_listening() -> bool:
-	return listening and is_visible_in_tree()
+	return listening and is_inside_tree()
 
 
 func get_level() -> int:

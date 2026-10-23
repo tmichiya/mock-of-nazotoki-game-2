@@ -71,6 +71,63 @@ func is_spinning() -> bool:
 	return not _spin.is_empty()
 
 
+## その手が相手とつながっているか
+func hand_in_link(p: Node, side: int) -> bool:
+	for pair in _pairs:
+		if (p == _a and pair.x == side) or (p == _b and pair.y == side):
+			return true
+	return false
+
+
+## その手が「空いていて伸ばしている」か(物をつかめるか)
+func hand_is_free(p: Player, side: int) -> bool:
+	var reaching := p.reach_left if side == Player.Side.LEFT else p.reach_right
+	if not reaching or hand_in_link(p, side):
+		return false
+	return p.held_objects[side] == null
+
+
+# ---------------------------------------------------------------- 物を通したつながり(長い棒・糸電話)
+
+var _virtual_links: Array = []   # [player_a, player_b, owner]
+
+
+## 物を通して二人が「つながっている」扱いにする(声が届く)。owner は登録した部品(ホストで呼ぶ)
+func set_virtual_link(owner: Node, a: Node, b: Node, on: bool) -> void:
+	var key := str(owner.get_path())
+	var before := _virtual_links.duplicate()
+	_virtual_links = _virtual_links.filter(func(l): return l[2] != key)
+	if on and a and b:
+		_virtual_links.append([a, b, key])
+	if Net.is_host() and Net.is_online() and before != _virtual_links:
+		var packed := _virtual_links.map(func(l): return [l[0].player_index, l[1].player_index, l[2]])
+		_rpc_virtual_links.rpc(packed)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_virtual_links(packed: Array) -> void:
+	_virtual_links = []
+	for l in packed:
+		var a := World.get_player_by_index(l[0])
+		var b := World.get_player_by_index(l[1])
+		if a and b:
+			_virtual_links.append([a, b, l[2]])
+
+
+## 声が届く相手(手つなぎ、または物を通したつながり)
+func voice_partner(p: Node) -> Node:
+	var q := linked_partner(p)
+	if q:
+		return q
+	for l in _virtual_links:
+		if is_instance_valid(l[0]) and is_instance_valid(l[1]):
+			if l[0] == p:
+				return l[1]
+			if l[1] == p:
+				return l[0]
+	return null
+
+
 # ---------------------------------------------------------------- 毎フレーム
 
 func _physics_process(delta: float) -> void:
@@ -140,6 +197,8 @@ func _dist3d(p: Player, q: Player) -> float:
 
 
 func _reach(p: Player, side: int) -> bool:
+	if p.held_objects[side] != null:
+		return false
 	return p.reach_left if side == Player.Side.LEFT else p.reach_right
 
 
@@ -213,8 +272,24 @@ func _rpc_pairs(new_pairs: Array) -> void:
 	_emit_changes(old_n, new_pairs.size())
 
 
+var _suppress_effects := false
+
+
+## 手つなぎを強制的に切る(やり直しなど)。投げや反動は起きない
+func force_unlink() -> void:
+	if not Net.is_host() or not is_linked():
+		return
+	_spin = {}
+	_cross = {}
+	_suppress_effects = true
+	_set_pairs([])
+	_suppress_effects = false
+
+
 ## 手を離した時の動き(ホストで計算し、相手の体の状態を引き渡す)
 func _on_release(recoil: bool) -> void:
+	if _suppress_effects:
+		recoil = false
 	if not _spin.is_empty():
 		var mover: Player = _spin.mover
 		var omega: float = _spin.omega

@@ -231,8 +231,12 @@ func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float) 
 	var a := base.duplicate()
 	a.origin = p.global_position
 	a.level = roundi(p.height)
+	if not p.voice_modifier.is_empty():
+		a.size = size * float(p.voice_modifier.get("size_scale", 1.0))
+		a.dir = p.voice_modifier.get("dir", p.facing)
+		a.spread = p.voice_modifier.get("spread", PI)
 	Waves.emit(a)
-	var partner := Hands.linked_partner(p) as Player
+	var partner := Hands.voice_partner(p) as Player
 	if partner:
 		var b := base.duplicate()
 		b.origin = partner.global_position
