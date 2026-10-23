@@ -25,6 +25,7 @@ World="*res://autoload/world.gd"
 Net="*res://autoload/net.gd"
 Hands="*res://autoload/hands.gd"
 Waves="*res://autoload/waves.gd"
+Voice="*res://autoload/voice.gd"
 
 [display]
 

@@ -18,6 +18,8 @@ signal peer_left(id: int)
 signal connection_failed
 signal status_changed(text: String)
 signal peer_ready_changed
+## 相手のシーンの準備ができた(部品はこれを受けて、ホストから今の状態を送り直す)
+signal peer_scene_ready(id: int)
 
 const DEFAULT_PORT := 7777
 
@@ -35,6 +37,7 @@ var _clock_offset := 0.0     # ホストの時計 - 自分の時計
 var _rtt := 0.0
 var _ping_timer := 0.0
 var _ready_peers := {}       # シーンの準備ができた相手
+var local_scene_ready := false
 
 
 func _ready() -> void:
@@ -127,6 +130,10 @@ func _on_peer_connected(id: int) -> void:
 	peer_joined.emit(id)
 	if multiplayer.is_server():
 		status_changed.emit("相手が参加しました")
+		# 今のシーンを相手にも開かせる
+		var scene := get_tree().current_scene
+		if scene and scene.scene_file_path != "":
+			_rpc_change_scene.rpc_id(id, scene.scene_file_path)
 		session_started.emit()
 
 
@@ -157,14 +164,19 @@ func _on_server_gone() -> void:
 
 ## シーンの部品(プレイヤーなど)の準備ができたことを相手に知らせる
 func announce_scene_ready() -> void:
+	local_scene_ready = true
 	if is_online():
-		_rpc_scene_ready.rpc()
+		_rpc_scene_ready.rpc(true)
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_scene_ready() -> void:
-	_ready_peers[multiplayer.get_remote_sender_id()] = true
+func _rpc_scene_ready(reply: bool) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	_ready_peers[id] = true
+	if reply and local_scene_ready:
+		_rpc_scene_ready.rpc_id(id, false)
 	peer_ready_changed.emit()
+	peer_scene_ready.emit(id)
 
 
 func is_peer_ready(id: int) -> bool:
@@ -180,12 +192,17 @@ func change_scene_for_all(path: String) -> void:
 	if is_online() and multiplayer.is_server():
 		_rpc_change_scene.rpc(path)
 	_ready_peers.clear()
+	local_scene_ready = false
 	get_tree().change_scene_to_file(path)
 
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_change_scene(path: String) -> void:
+	var scene := get_tree().current_scene
+	if scene and scene.scene_file_path == path:
+		return
 	_ready_peers.clear()
+	local_scene_ready = false
 	get_tree().change_scene_to_file(path)
 
 

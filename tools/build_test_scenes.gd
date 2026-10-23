@@ -9,6 +9,8 @@ var builders := {
 	"terrain": _build_terrain,
 	"hands": _build_hands,
 	"sound_wave": _build_sound_wave,
+	"voice": _build_voice,
+	"net": _build_net,
 }
 
 
@@ -189,3 +191,31 @@ func _build_sound_wave() -> void:
 	emitter(root, "EFluff", Vector2(2, 13), "generic", 1.6)
 	add_common(root, Vector2(3, 10), Vector2(5, 10))
 	save(root, "res://parts/sound_wave/test_sound_wave.tscn")
+
+
+# ---------------------------------------------------------------- F マイクと声の波
+
+func _build_voice() -> void:
+	var root := new_world("res://parts/voice/test_voice.gd",
+		"【マイク・声の波】話すとオレンジの位置から声の波。大きな声ほど大きな波。右上に音量と声の高さ(Hz・音名)")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 20, 14), 0)
+	fill(t, Rect2i(13, 2, 5, 9), 1)
+	inst(root, "res://parts/voice/voice_monitor.tscn")
+	add_common(root, Vector2(6, 7), Vector2(10, 7))
+	save(root, "res://parts/voice/test_voice.tscn")
+
+
+# ---------------------------------------------------------------- G 通信とVC
+
+func _build_net() -> void:
+	var root := new_world("res://tests/test_net.gd",
+		"【通信・VC】2つ起動して片方ホスト・片方参加。遠いと声が遅れて届く/近いとすぐ/段が違うと届かない/段をまたいで手をつなぐと届く")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 24, 14), 0)
+	fill(t, Rect2i(14, 2, 8, 10), 1)
+	slope(t, Vector2i(13, 4), 0, S.E)
+	var vm := inst(root, "res://parts/voice/voice_monitor.tscn")
+	add_common(root, Vector2(3, 7), Vector2(10, 7))
+	inst(root, "res://parts/hands/hand_link_monitor.tscn")
+	save(root, "res://tests/test_net.tscn")

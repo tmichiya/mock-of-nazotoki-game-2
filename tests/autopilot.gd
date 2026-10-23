@@ -29,7 +29,8 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	if not _started:
-		if World.get_players().size() < 1:
+		var need := 2 if (Net.auto_host or Net.auto_join_ip != "") else 1
+		if World.get_players().size() < need:
 			return
 		_started = true
 		_next()
@@ -85,7 +86,8 @@ func _apply_dynamic() -> void:
 
 
 func report(label: String) -> void:
-	var line := "[AUTO] %s" % label
+	var role := "" if not Net.is_online() else (" host" if Net.is_host() else " client")
+	var line := "[AUTO%s] %s" % [role, label]
 	for p in World.get_players():
 		line += " | P%d pos=(%.0f,%.0f) h=%.2f ground=%.2f st=%d arms=%d,%d" % [p.player_index, p.global_position.x, p.global_position.y, p.height, World.height_at(p.global_position), p.state, p.arm_left, p.arm_right]
 	if Hands.is_linked():

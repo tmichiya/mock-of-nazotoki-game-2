@@ -24,6 +24,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	Net.session_started.connect(_respawn_online)
+	Net.peer_joined.connect(func(_id): _respawn_online())
 	Net.peer_left.connect(_on_peer_left)
 	Net.session_ended.connect(_respawn_offline)
 	if Net.is_online():
@@ -61,23 +62,28 @@ func _respawn_offline() -> void:
 func _respawn_online() -> void:
 	if not Net.is_online():
 		return
-	_clear()
 	var ids := [1]
-	for id in Net.remote_ids():
-		if id != 1:
+	for id in Net.remote_ids() + [Net.my_id()]:
+		if id not in ids:
 			ids.append(id)
-	if Net.my_id() != 1 and Net.my_id() not in ids:
-		ids.append(Net.my_id())
 	ids.sort()
-	var index := 1
-	for id in ids:
-		var local: bool = id == Net.my_id()
-		_spawn(id, index, local, Net.local_keyboard, Net.local_pad)
-		index += 1
-		if index > 2:
-			break
-	Net.announce_scene_ready()
+	ids = ids.slice(0, 2)
+	# いなくなった人(オフラインの2人目など)を消し、足りない人だけ出す
+	for id in _spawned.keys():
+		if id not in ids or not is_instance_valid(_spawned[id]) or _spawned[id].is_local != (id == Net.my_id()):
+			if is_instance_valid(_spawned[id]):
+				_spawned[id].queue_free()
+			_spawned.erase(id)
+	for i in range(ids.size()):
+		var id: int = ids[i]
+		if not _spawned.has(id):
+			_spawn(id, i + 1, id == Net.my_id(), Net.local_keyboard, Net.local_pad)
+	Net.announce_scene_ready.call_deferred()
 	players_spawned.emit()
+
+
+func _exit_tree() -> void:
+	Net.local_scene_ready = false
 
 
 func _on_peer_left(id: int) -> void:
