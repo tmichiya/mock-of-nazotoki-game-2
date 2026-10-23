@@ -24,6 +24,7 @@ driver/enable_input=true
 World="*res://autoload/world.gd"
 Net="*res://autoload/net.gd"
 Hands="*res://autoload/hands.gd"
+Waves="*res://autoload/waves.gd"
 
 [display]
 

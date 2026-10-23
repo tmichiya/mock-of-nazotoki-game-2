@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WaveShape" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://parts/sound_wave/wave_shape.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+kind = &"bird"
+rings = 3
+ring_spacing = 3.0
+zigzag = 0.0
+zigzag_length = 6.0
+line_width = 1.0
+speed = 170.0
+lifetime = 1.4
+color = Color(0.6, 1, 0.8, 0.95)

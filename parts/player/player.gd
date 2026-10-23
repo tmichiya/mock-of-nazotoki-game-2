@@ -129,11 +129,19 @@ func _ready() -> void:
 	arm_l_node.position = Vector2(-shoulder_offset.x, shoulder_offset.y)
 	arm_r_node.position = shoulder_offset
 	_update_colors()
+	var rcv := get_node_or_null("WaveReceiver") as WaveReceiver
+	if rcv:
+		rcv.ignore_source = source_id()
 	World.register_player(self)
 
 
 func _exit_tree() -> void:
 	World.unregister_player(self)
+
+
+## 音源としての名前(声の波などに使う)
+func source_id() -> String:
+	return "P%d" % player_index
 
 
 func setup_input(kb: int, pad: int) -> void:

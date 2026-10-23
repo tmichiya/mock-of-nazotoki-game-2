@@ -8,6 +8,7 @@ const S := { FLAT = 0, N = 1, S = 2, E = 3, W = 4 }
 var builders := {
 	"terrain": _build_terrain,
 	"hands": _build_hands,
+	"sound_wave": _build_sound_wave,
 }
 
 
@@ -131,3 +132,60 @@ func _build_hands() -> void:
 	root.get_node("SpawnPoint2").position += Vector2(24, 0)
 	inst(root, "res://parts/hands/hand_link_monitor.tscn")
 	save(root, "res://parts/hands/test_hands.tscn")
+
+
+# ---------------------------------------------------------------- E 音の波
+
+func emitter(root: Node, nm: String, cell: Vector2, shape: String, size: float) -> Node:
+	var e := inst(root, "res://parts/sound_wave/sound_emitter.tscn", cell_center(cell))
+	e.name = nm
+	e.source_name = nm
+	e.shape = load("res://parts/sound_wave/shapes/%s.tres" % shape)
+	e.size = size
+	return e
+
+
+func receiver(root: Node, nm: String, cell: Vector2) -> Node:
+	var r := inst(root, "res://parts/sound_wave/wave_receiver.tscn", cell_center(cell))
+	r.name = nm
+	r.radius = 10.0
+	return r
+
+
+func _build_sound_wave() -> void:
+	var root := new_world("res://parts/sound_wave/test_sound_wave.gd",
+		"【音の波】1:E0(0段) 2:E1(1段) 3:EA+EB同時 4:ずらす 5:楕円の焦点 6:綿毛を押す  ※受け取りと重なりは画面とログに出る")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 24, 19), 0)
+	fill(t, Rect2i(8, 4, 6, 6), 1)       # 台地1(1段)
+	fill(t, Rect2i(10, 6, 2, 2), 2)      # 2段の塊
+	fill(t, Rect2i(16, 4, 4, 6), 1)      # 台地2(1段)
+	slope(t, Vector2i(7, 8), 0, S.E)
+	emitter(root, "E0", Vector2(4, 6.5), "impact", 2.6)
+	emitter(root, "E1", Vector2(9, 5), "voice", 2.0)
+	emitter(root, "EA", Vector2(1, 1.5), "generic", 1.0)
+	emitter(root, "EB", Vector2(7, 1.5), "generic", 1.0)
+	receiver(root, "Rwest", Vector2(1.5, 6.5))
+	receiver(root, "Rgap", Vector2(14.5, 6.5))
+	receiver(root, "Rsouth", Vector2(9, 8.5))
+	receiver(root, "Rbehind", Vector2(12.5, 8.5))
+	receiver(root, "Reast", Vector2(17, 5))
+	receiver(root, "Roverlap", Vector2(4, 1.5))
+	# 楕円の広間(0段)
+	var wall := inst(root, "res://parts/sound_wave/sound_wall.tscn", cell_center(Vector2(16, 14.5)))
+	wall.name = "EllipseWall"
+	wall.ellipse_size = Vector2(240, 96)
+	wall.ellipse_segments = 64
+	wall.make_ellipse()
+	wall.block_bodies = false
+	var c := sqrt(120.0 * 120.0 - 48.0 * 48.0)
+	var ef := emitter(root, "EFocus", Vector2.ZERO, "voice", 1.4)
+	ef.position = cell_center(Vector2(16, 14.5)) - Vector2(c, 0)
+	var rf := receiver(root, "Rfocus", Vector2.ZERO)
+	rf.position = cell_center(Vector2(16, 14.5)) + Vector2(c, 0)
+	# 綿毛
+	var fl := inst(root, "res://parts/props/fluff.tscn", cell_center(Vector2(4, 13)))
+	fl.name = "Fluff"
+	emitter(root, "EFluff", Vector2(2, 13), "generic", 1.6)
+	add_common(root, Vector2(3, 10), Vector2(5, 10))
+	save(root, "res://parts/sound_wave/test_sound_wave.tscn")

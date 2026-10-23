@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://parts/player/player.gd" id="1"]
 [ext_resource type="Script" path="res://parts/player/player_visual.gd" id="2"]
 [ext_resource type="Script" path="res://parts/player/player_arm.gd" id="3"]
+[ext_resource type="Script" path="res://parts/sound_wave/wave_receiver.gd" id="4"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 5.0
@@ -34,3 +35,7 @@ z_index = 100
 z_as_relative = false
 script = ExtResource("2")
 mode = 2
+
+[node name="WaveReceiver" type="Node2D" parent="."]
+script = ExtResource("4")
+radius = 9.0
