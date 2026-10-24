@@ -1,76 +1,114 @@
-[gd_scene format=4 uid="uid://ldcajtua02un"]
+[gd_scene format=4]
 
-[ext_resource type="Script" uid="uid://j3m7s8giqs1v" path="res://scripts/tests/test_bird.gd" id="1_bxboi"]
-[ext_resource type="TileSet" uid="uid://70mhmjh0i8r8" path="res://resources/terrain/terrain_tileset.tres" id="2_33jop"]
-[ext_resource type="Script" uid="uid://64jhw5aekjsi" path="res://scripts/parts/terrain/terrain.gd" id="3_h56h6"]
-[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/singing_bird.tscn" id="4_i66sh"]
-[ext_resource type="Resource" path="res://resources/settings/world_config.tres" id="4_oihx7"]
-[ext_resource type="Resource" uid="uid://b7mf8qreho6rv" path="res://resources/settings/level_style.tres" id="5_a3evt"]
-[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/chord_judge.tscn" id="6_74yoh"]
-[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/instrument.tscn" id="8_l2c4r"]
-[ext_resource type="PackedScene" path="res://scenes/parts/player/player_spawner.tscn" id="10_yu4hq"]
-[ext_resource type="PackedScene" path="res://scenes/parts/player/spawn_point.tscn" id="12_flv1q"]
-[ext_resource type="PackedScene" path="res://scenes/parts/camera/follow_camera.tscn" id="14_lhi14"]
-[ext_resource type="Script" uid="uid://k0e5x55mp5j7" path="res://scripts/tests/autopilot.gd" id="16_0e1e5"]
-[ext_resource type="PackedScene" path="res://scenes/parts/voice/voice_monitor.tscn" id="17_vmon"]
+[ext_resource type="Script" path="res://scripts/tests/test_bird.gd" id="1_mwqss"]
+[ext_resource type="TileSet" path="res://resources/terrain/terrain_tileset.tres" id="2_l2c4r"]
+[ext_resource type="Script" path="res://scripts/parts/terrain/terrain.gd" id="3_bv27e"]
+[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/singing_bird.tscn" id="4_yu4hq"]
+[ext_resource type="Script" path="res://scripts/parts/puzzle/singing_bird.gd" id="5_s1d7t"]
+[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/chord_judge.tscn" id="6_flv1q"]
+[ext_resource type="Script" path="res://scripts/parts/puzzle/chord_judge.gd" id="7_ru0kp"]
+[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/instrument.tscn" id="8_lhi14"]
+[ext_resource type="Script" path="res://scripts/parts/puzzle/instrument.gd" id="9_h5mkm"]
+[ext_resource type="PackedScene" path="res://scenes/parts/puzzle/voice_eater.tscn" id="10_0e1e5"]
+[ext_resource type="Script" path="res://scripts/parts/puzzle/voice_eater.gd" id="11_g26uh"]
+[ext_resource type="PackedScene" path="res://scenes/parts/sound_wave/wave_receiver.tscn" id="12_phdnt"]
+[ext_resource type="Script" path="res://scripts/parts/sound_wave/wave_receiver.gd" id="13_14eqv"]
+[ext_resource type="PackedScene" path="res://scenes/parts/voice/voice_monitor.tscn" id="14_q8yaa"]
+[ext_resource type="Script" path="res://scripts/parts/voice/voice_monitor.gd" id="15_xlyeo"]
+[ext_resource type="PackedScene" path="res://scenes/parts/player/player_spawner.tscn" id="16_tg02c"]
+[ext_resource type="Script" path="res://scripts/parts/player/player_spawner.gd" id="17_kuw0g"]
+[ext_resource type="PackedScene" path="res://scenes/parts/player/spawn_point.tscn" id="18_js6aa"]
+[ext_resource type="Script" path="res://scripts/parts/player/spawn_point.gd" id="19_55tme"]
+[ext_resource type="PackedScene" path="res://scenes/parts/camera/follow_camera.tscn" id="20_hklgr"]
+[ext_resource type="Script" path="res://scripts/parts/camera/follow_camera.gd" id="21_usfi6"]
+[ext_resource type="Script" path="res://scripts/tests/autopilot.gd" id="22_83uue"]
 
-[node name="Test" type="Node2D" unique_id=1035969221]
+[node name="Test" type="Node2D" unique_id=1241310265]
 y_sort_enabled = true
-script = ExtResource("1_bxboi")
+script = ExtResource("1_mwqss")
+help_text = "【歌う鳥】鳥の近くで歌うか、瓶笛(近くで X / R)を鳴らすと、鳥が近い音で鳴き直す。3羽がド・ミ・ソをそろえると和音の判定役が成功を出す
+右上のメーターで、マイク(F4で切替)・音量・声の高さを確かめる。声が届いたのに高さが取れない時は Bird.heard(-1) が出る"
 
-[node name="Terrain" type="TileMapLayer" parent="." unique_id=1223819573]
-self_modulate = Color(1, 1, 1, 0.35)
+[node name="Terrain" type="TileMapLayer" parent="." unique_id=224518732]
 y_sort_enabled = true
 tile_map_data = PackedByteArray("AAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAACAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAANAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAPAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAARAAAAAAAAAAAAAAASAAAAAAAAAAAAAAATAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAVAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAAAAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAMAAEAAAAAAAAAAAANAAEAAAAAAAAAAAAOAAEAAAAAAAAAAAAPAAEAAAAAAAAAAAAQAAEAAAAAAAAAAAARAAEAAAAAAAAAAAASAAEAAAAAAAAAAAATAAEAAAAAAAAAAAAUAAEAAAAAAAAAAAAVAAEAAAAAAAAAAAAAAAIAAAAAAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAAAAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAAAAAAAAAANAAIAAAAAAAAAAAAOAAIAAAAAAAAAAAAPAAIAAAAAAAAAAAAQAAIAAAAAAAAAAAARAAIAAAAAAAAAAAASAAIAAAAAAAAAAAATAAIAAAAAAAAAAAAUAAIAAAAAAAAAAAAVAAIAAAAAAAAAAAAAAAMAAAAAAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAMAAMAAAAAAAAAAAANAAMAAAAAAAAAAAAOAAMAAAAAAAAAAAAPAAMAAAAAAAAAAAAQAAMAAAAAAAAAAAARAAMAAAAAAAAAAAASAAMAAAAAAAAAAAATAAMAAAAAAAAAAAAUAAMAAAAAAAAAAAAVAAMAAAAAAAAAAAAAAAQAAAAAAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAAAAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAMAAQAAAAAAAAAAAANAAQAAAAAAAAAAAAOAAQAAAAAAAAAAAAPAAQAAAAAAAAAAAAQAAQAAAAAAAAAAAARAAQAAAAAAAAAAAASAAQAAAAAAAAAAAATAAQAAAAAAAAAAAAUAAQAAAAAAAAAAAAVAAQAAAAAAAAAAAAAAAUAAAAAAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAAAAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAMAAUAAAAAAAAAAAANAAUAAAAAAAAAAAAOAAUAAAAAAAAAAAAPAAUAAAAAAAAAAAAQAAUAAAAAAAAAAAARAAUAAAAAAAAAAAASAAUAAAAAAAAAAAATAAUAAAAAAAAAAAAUAAUAAAAAAAAAAAAVAAUAAAAAAAAAAAAAAAYAAAAAAAAAAAABAAYAAAAAAAAAAAACAAYAAAAAAAAAAAADAAYAAAAAAAAAAAAEAAYAAAAAAAAAAAAFAAYAAAAAAAAAAAAGAAYAAAAAAAAAAAAHAAYAAAAAAAAAAAAIAAYAAAAAAAAAAAAJAAYAAAAAAAAAAAAKAAYAAAAAAAAAAAALAAYAAAAAAAAAAAAMAAYAAAAAAAAAAAANAAYAAAAAAAAAAAAOAAYAAAAAAAAAAAAPAAYAAAAAAAAAAAAQAAYAAAAAAAAAAAARAAYAAAAAAAAAAAASAAYAAAAAAAAAAAATAAYAAAAAAAAAAAAUAAYAAAAAAAAAAAAVAAYAAAAAAAAAAAAAAAcAAAAAAAAAAAABAAcAAAAAAAAAAAACAAcAAAAAAAAAAAADAAcAAAAAAAAAAAAEAAcAAAAAAAAAAAAFAAcAAAAAAAAAAAAGAAcAAAAAAAAAAAAHAAcAAAAAAAAAAAAIAAcAAAAAAAAAAAAJAAcAAAAAAAAAAAAKAAcAAAAAAAAAAAALAAcAAAAAAAAAAAAMAAcAAAAAAAAAAAANAAcAAAAAAAAAAAAOAAcAAAAAAAAAAAAPAAcAAAAAAAAAAAAQAAcAAAAAAAAAAAARAAcAAAAAAAAAAAASAAcAAAAAAAAAAAATAAcAAAAAAAAAAAAUAAcAAAAAAAAAAAAVAAcAAAAAAAAAAAAAAAgAAAAAAAAAAAABAAgAAAAAAAAAAAACAAgAAAAAAAAAAAADAAgAAAAAAAAAAAAEAAgAAAAAAAAAAAAFAAgAAAAAAAAAAAAGAAgAAAAAAAAAAAAHAAgAAAAAAAAAAAAIAAgAAAAAAAAAAAAJAAgAAAAAAAAAAAAKAAgAAAAAAAAAAAALAAgAAAAAAAAAAAAMAAgAAAAAAAAAAAANAAgAAAAAAAAAAAAOAAgAAAAAAAAAAAAPAAgAAAAAAAAAAAAQAAgAAAAAAAAAAAARAAgAAAAAAAAAAAASAAgAAAAAAAAAAAATAAgAAAAAAAAAAAAUAAgAAAAAAAAAAAAVAAgAAAAAAAAAAAAAAAkAAAAAAAAAAAABAAkAAAAAAAAAAAACAAkAAAAAAAAAAAADAAkAAAAAAAAAAAAEAAkAAAAAAAAAAAAFAAkAAAAAAAAAAAAGAAkAAAAAAAAAAAAHAAkAAAAAAAAAAAAIAAkAAAAAAAAAAAAJAAkAAAAAAAAAAAAKAAkAAAAAAAAAAAALAAkAAAAAAAAAAAAMAAkAAAAAAAAAAAANAAkAAAAAAAAAAAAOAAkAAAAAAAAAAAAPAAkAAAAAAAAAAAAQAAkAAAAAAAAAAAARAAkAAAAAAAAAAAASAAkAAAAAAAAAAAATAAkAAAAAAAAAAAAUAAkAAAAAAAAAAAAVAAkAAAAAAAAAAAAAAAoAAAAAAAAAAAABAAoAAAAAAAAAAAACAAoAAAAAAAAAAAADAAoAAAAAAAAAAAAEAAoAAAAAAAAAAAAFAAoAAAAAAAAAAAAGAAoAAAAAAAAAAAAHAAoAAAAAAAAAAAAIAAoAAAAAAAAAAAAJAAoAAAAAAAAAAAAKAAoAAAAAAAAAAAALAAoAAAAAAAAAAAAMAAoAAAAAAAAAAAANAAoAAAAAAAAAAAAOAAoAAAAAAAAAAAAPAAoAAAAAAAAAAAAQAAoAAAAAAAAAAAARAAoAAAAAAAAAAAASAAoAAAAAAAAAAAATAAoAAAAAAAAAAAAUAAoAAAAAAAAAAAAVAAoAAAAAAAAAAAAAAAsAAAAAAAAAAAABAAsAAAAAAAAAAAACAAsAAAAAAAAAAAADAAsAAAAAAAAAAAAEAAsAAAAAAAAAAAAFAAsAAAAAAAAAAAAGAAsAAAAAAAAAAAAHAAsAAAAAAAAAAAAIAAsAAAAAAAAAAAAJAAsAAAAAAAAAAAAKAAsAAAAAAAAAAAALAAsAAAAAAAAAAAAMAAsAAAAAAAAAAAANAAsAAAAAAAAAAAAOAAsAAAAAAAAAAAAPAAsAAAAAAAAAAAAQAAsAAAAAAAAAAAARAAsAAAAAAAAAAAASAAsAAAAAAAAAAAATAAsAAAAAAAAAAAAUAAsAAAAAAAAAAAAVAAsAAAAAAAAAAAAAAAwAAAAAAAAAAAABAAwAAAAAAAAAAAACAAwAAAAAAAAAAAADAAwAAAAAAAAAAAAEAAwAAAAAAAAAAAAFAAwAAAAAAAAAAAAGAAwAAAAAAAAAAAAHAAwAAAAAAAAAAAAIAAwAAAAAAAAAAAAJAAwAAAAAAAAAAAAKAAwAAAAAAAAAAAALAAwAAAAAAAAAAAAMAAwAAAAAAAAAAAANAAwAAAAAAAAAAAAOAAwAAAAAAAAAAAAPAAwAAAAAAAAAAAAQAAwAAAAAAAAAAAARAAwAAAAAAAAAAAASAAwAAAAAAAAAAAATAAwAAAAAAAAAAAAUAAwAAAAAAAAAAAAVAAwAAAAAAAAAAAAAAA0AAAAAAAAAAAABAA0AAAAAAAAAAAACAA0AAAAAAAAAAAADAA0AAAAAAAAAAAAEAA0AAAAAAAAAAAAFAA0AAAAAAAAAAAAGAA0AAAAAAAAAAAAHAA0AAAAAAAAAAAAIAA0AAAAAAAAAAAAJAA0AAAAAAAAAAAAKAA0AAAAAAAAAAAALAA0AAAAAAAAAAAAMAA0AAAAAAAAAAAANAA0AAAAAAAAAAAAOAA0AAAAAAAAAAAAPAA0AAAAAAAAAAAAQAA0AAAAAAAAAAAARAA0AAAAAAAAAAAASAA0AAAAAAAAAAAATAA0AAAAAAAAAAAAUAA0AAAAAAAAAAAAVAA0AAAAAAAAAAAA=")
-tile_set = ExtResource("2_33jop")
-script = ExtResource("3_h56h6")
-config = ExtResource("4_oihx7")
-style = ExtResource("5_a3evt")
+tile_set = ExtResource("2_l2c4r")
+script = ExtResource("3_bv27e")
 
-[node name="BirdA" parent="." unique_id=1606431051 instance=ExtResource("4_i66sh")]
+[node name="BirdA" type="Node2D" parent="." unique_id=1093323193 instance=ExtResource("4_yu4hq")]
 position = Vector2(272, 84)
+script = ExtResource("5_s1d7t")
 notes = PackedFloat32Array(60)
+correct_notes = PackedFloat32Array()
 
-[node name="BirdB" parent="." unique_id=161227180 instance=ExtResource("4_i66sh")]
+[node name="BirdB" type="Node2D" parent="." unique_id=881229085 instance=ExtResource("4_yu4hq")]
 position = Vector2(368, 84)
+script = ExtResource("5_s1d7t")
 notes = PackedFloat32Array(64)
+correct_notes = PackedFloat32Array()
 
-[node name="BirdC" parent="." unique_id=1676717500 instance=ExtResource("4_i66sh")]
+[node name="BirdC" type="Node2D" parent="." unique_id=1941296596 instance=ExtResource("4_yu4hq")]
 position = Vector2(464, 84)
+script = ExtResource("5_s1d7t")
 notes = PackedFloat32Array(67)
+correct_notes = PackedFloat32Array()
 
-[node name="Chord" parent="." unique_id=2024446058 instance=ExtResource("6_74yoh")]
+[node name="Chord" type="Node" parent="." unique_id=1014083263 instance=ExtResource("6_flv1q")]
+script = ExtResource("7_ru0kp")
 birds = Array[NodePath]([NodePath("../BirdA"), NodePath("../BirdB"), NodePath("../BirdC")])
 chord = PackedFloat32Array(60, 64, 67)
 
-[node name="BottleC" parent="." unique_id=1050257640 instance=ExtResource("8_l2c4r")]
+[node name="BottleC" type="Node2D" parent="." unique_id=1030978667 instance=ExtResource("8_lhi14")]
 position = Vector2(272, 180)
+script = ExtResource("9_h5mkm")
 size = 1.4
 
-[node name="BottleE" parent="." unique_id=1610029590 instance=ExtResource("8_l2c4r")]
+[node name="BottleE" type="Node2D" parent="." unique_id=426496211 instance=ExtResource("8_lhi14")]
 position = Vector2(368, 180)
+script = ExtResource("9_h5mkm")
 note = 64.0
 size = 1.4
 
-[node name="BottleG" parent="." unique_id=1793424212 instance=ExtResource("8_l2c4r")]
+[node name="BottleG" type="Node2D" parent="." unique_id=1428756793 instance=ExtResource("8_lhi14")]
 position = Vector2(464, 180)
+script = ExtResource("9_h5mkm")
 note = 67.0
 size = 1.4
 
-[node name="PlayerSpawner" parent="." unique_id=1116008403 instance=ExtResource("10_yu4hq")]
-position = Vector2(176, 252)
+[node name="Eater" type="Node2D" parent="." unique_id=1313767564 instance=ExtResource("10_0e1e5")]
+position = Vector2(560, 84)
+script = ExtResource("11_g26uh")
+direction = 2
+direction_map = PackedInt32Array()
+eat_kinds = Array[StringName]([&"bird"])
 
-[node name="SpawnPoint1" parent="." unique_id=756608632 instance=ExtResource("12_flv1q")]
+[node name="RBird" type="Node2D" parent="." unique_id=1877409561 instance=ExtResource("12_phdnt")]
+position = Vector2(560, 252)
+script = ExtResource("13_14eqv")
+radius = 10.0
+accept_kinds = Array[StringName]([&"bird"])
+
+[node name="VoiceMonitor" type="Node" parent="." unique_id=225013339 instance=ExtResource("14_q8yaa")]
+script = ExtResource("15_xlyeo")
+show_meter = true
+
+[node name="PlayerSpawner" type="Node2D" parent="." unique_id=797553175 instance=ExtResource("16_tg02c")]
 position = Vector2(368, 132)
+script = ExtResource("17_kuw0g")
 
-[node name="SpawnPoint2" parent="." unique_id=739181730 instance=ExtResource("12_flv1q")]
+[node name="SpawnPoint1" type="Marker2D" parent="." unique_id=2140667265 instance=ExtResource("18_js6aa")]
+position = Vector2(368, 132)
+script = ExtResource("19_55tme")
+
+[node name="SpawnPoint2" type="Marker2D" parent="." unique_id=948098205 instance=ExtResource("18_js6aa")]
 position = Vector2(400, 132)
+script = ExtResource("19_55tme")
 index = 2
 
-[node name="FollowCamera" parent="." unique_id=1134442885 instance=ExtResource("14_lhi14")]
-position = Vector2(176, 252)
+[node name="FollowCamera" type="Camera2D" parent="." unique_id=422211277 instance=ExtResource("20_hklgr")]
+position = Vector2(368, 132)
+zoom = Vector2(2, 2)
+script = ExtResource("21_usfi6")
 
-[node name="Autopilot" type="Node" parent="." unique_id=993674654]
-script = ExtResource("16_0e1e5")
-
-[node name="VoiceMonitor" parent="." unique_id=2134321411 instance=ExtResource("17_vmon")]
+[node name="Autopilot" type="Node" parent="." unique_id=459155191]
+script = ExtResource("22_83uue")

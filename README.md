@@ -222,6 +222,9 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 ### M. 歌う鳥 `SingingBird` / 和音の判定役 `ChordJudge` / 楽器 `Instrument`
 - **鳥**: 鳴ける音 `notes`(MIDI番号)、許容幅(半音)、オクターブ違いを同じとみなすか、反応する種類(voice・instrument)、間隔、鳴き声の波の大きさ・形
   - **シグナル**: `sang(midi)` `out_of_tune(midi)` `heard(midi)`(声や楽器の音が届いた。高さが取れていなければ -1 で、鳴き直さない)/ **受け口**: `hear_pitch(midi)`
+  - **定期的に鳴く(手本)**: 鳥は定期的に手本の音(`call_note`。-1 なら `correct_notes` の最初、無ければ `notes` の最初)で自分から鳴く。同じ組の鳥は同時に鳴かず、決まった順(シーンの並び順)に `call_gap` 秒(初期 2.5秒)ずつ空けて鳴き、一回りしたら `call_rest` 秒(初期 4秒)休む。組は `call_group` の名前で決まり、空なら「同じ親の下の鳥」が一つの組。誰かの声に応えて鳴いた直後も、`call_gap` 秒空けてから次の手本を鳴く
+  - 手本の鳴き声も音の波(種類 bird)なので、声を食べる動物に食べさせて別の所へ運べる(動物は鳥の鳴き声のまま、その音で鳴って吐き出す)。手本は `sang` ではなく `called(midi)` を出すので、和音の判定役や正解には数えない
+  - **調整値**: `call_enabled`、`call_note`、`call_group`、`call_gap`、`call_rest`、`call_start_delay`、`call_size` / **受け口**: `call_now()`
 - **和音の判定役**: `birds` に鳥を登録、`chord`(MIDI番号)、`window`、オクターブ違い、余計な音を許さない、一度だけ
   - **シグナル**: `chord_completed` `progress_changed(matched, needed)` / **受け口**: `reset()`
 - **楽器(瓶笛)**: `note`、鳴らせる距離、大きさ、間隔、持ち運べるか。近くで楽器ボタン(X / R)を押すと鳴る。ポーズ中に腕を向けて握ると運べる

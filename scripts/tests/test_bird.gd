@@ -3,6 +3,8 @@ extends TestSceneBase
 ## ・3羽の鳥(ド・ミ・ソを鳴ける)。声の高さが近い音で鳴き直す(マイクで歌うか、瓶笛で)
 ## ・瓶笛:近くで楽器ボタン(X / キーボード R)を押すと鳴る。手を伸ばしてつかむと持ち運べる
 ## ・3羽がそれぞれ別の音を許容時間内に鳴くと、和音の判定役が chord_completed を出す(和音はインスペクタで設定)
+## ・鳥は定期的に手本の音で自分から鳴く(called)。3羽は同時に鳴かず、順番に間隔を空ける
+## ・右の動物(Eater)は鳥の鳴き声を食べ、下の受け手(RBird)へ鳥の鳴き声のまま吐き出す
 
 
 func _ready() -> void:
@@ -10,6 +12,11 @@ func _ready() -> void:
 	for b in ["BirdA", "BirdB", "BirdC"]:
 		watch(b, ["sang", "out_of_tune", "heard"])
 	watch("Chord", ["chord_completed", "progress_changed"])
+	watch("Eater", ["ate", "spat"])
+	watch("RBird", ["wave_received"])
+	for b in ["BirdA", "BirdB", "BirdC"]:
+		var bird := get_node(b)
+		bird.called.connect(func(m): print("[AUTO] %s called %.0f at %.2f" % [b, m, Waves.clock]))
 
 
 func _steps() -> Array:
@@ -28,6 +35,7 @@ func _steps() -> Array:
 		{ t = 0.6 },
 		{ t = 1.0, call = "sing_c", log = "voice C4 (261.6Hz) near BirdA: expect BirdA sings" },
 		{ t = 0.5, call = "sing_off" },
+		{ t = 16.0, log = "waiting: expect birds call in turn, apart, never together; Eater relays a call to RBird" },
 	]
 
 
