@@ -6,6 +6,9 @@ extends Resource
 @export_group("マイク")
 ## 使う録音デバイスの名前(空なら Windows の既定の録音デバイス)。実行中は F4 で切り替えられる
 @export var input_device := ""
+## マイクの音の読み方。DIRECT = デバイスから直接読む(既定。デバイスと出力の標本化周波数が違っても音が壊れない)/
+## BUS = 以前の方法(AudioStreamMicrophone を音声バスに流して取り込む)
+@export_enum("DIRECT", "BUS") var mic_source := 0
 ## マイクの左右どちらの音を使うか(MIX = 左右の平均。片方にしか声が入らない機材や、左右で打ち消し合う時は LEFT / RIGHT)
 @export_enum("MIX", "LEFT", "RIGHT") var mic_channel := 0
 ## マイクの感度(dB。大きいほど小さな声でも拾う)

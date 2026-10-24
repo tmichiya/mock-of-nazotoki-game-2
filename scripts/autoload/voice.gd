@@ -70,7 +70,13 @@ func _setup_mic() -> void:
 	_mic_player = AudioStreamPlayer.new()
 	_mic_player.bus = MIC_BUS
 	add_child(_mic_player)
-	if settings.mic_enabled and settings.test_tone_hz <= 0.0:
+	if not settings.mic_enabled:
+		return
+	if settings.mic_source == 0:
+		# 直接読む:デバイスの標本化周波数のまま受け取る(出力との周波数の違いで音が壊れない)
+		AudioServer.set_input_device_active(true)
+		_mix_rate = AudioServer.get_input_mix_rate()
+	else:
 		_mic_player.stream = AudioStreamMicrophone.new()
 		_mic_player.play()
 
@@ -260,12 +266,24 @@ func _read_input(delta: float) -> void:
 			_tone_phase += TAU * settings.test_tone_hz / _mix_rate
 			_acc.append(sin(_tone_phase) * settings.test_tone_volume)
 		return
-	if _capture == null or not settings.mic_enabled:
+	if not settings.mic_enabled:
 		return
-	var avail := _capture.get_frames_available()
-	if avail <= 0:
-		return
-	var buf := _capture.get_buffer(avail)
+	var buf: PackedVector2Array
+	if settings.mic_source == 0:
+		var rate := AudioServer.get_input_mix_rate()
+		if rate > 0 and rate != _mix_rate:
+			_mix_rate = rate
+		var n := AudioServer.get_input_frames_available()
+		if n <= 0:
+			return
+		buf = AudioServer.get_input_frames(n)
+	else:
+		if _capture == null:
+			return
+		var avail := _capture.get_frames_available()
+		if avail <= 0:
+			return
+		buf = _capture.get_buffer(avail)
 	_debug_stats(buf, delta)
 	var gain := db_to_linear(settings.mic_gain_db)
 	match settings.mic_channel:

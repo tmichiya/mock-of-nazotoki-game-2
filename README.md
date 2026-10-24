@@ -159,7 +159,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 - 波を出す: `Waves.emit({ origin, level, size, shape, source, color, dir, spread, payload, global })`
 
 ### F. マイクと声の波 `Voice`(自動読み込み)+ `VoiceMonitor`(`scenes/parts/voice/voice_monitor.tscn`)
-- **調整できる値**: `resources/settings/voice_settings.tres`(録音デバイス `input_device`(空なら Windows の既定。実行中は F4 で切替)、使う音 `mic_channel`(左右の平均/左/右)、感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
+- **調整できる値**: `resources/settings/voice_settings.tres`(録音デバイス `input_device`(空なら Windows の既定。実行中は F4 で切替)、読み方 `mic_source`(DIRECT = デバイスから直接読む。既定 / BUS = 以前の方法)、使う音 `mic_channel`(左右の平均/左/右)、感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
 - **問い合わせ**: `Voice.get_pitch_hz()` `Voice.get_pitch_midi()`(60=真ん中のド)`Voice.get_volume()`(0〜1)
 - **シグナル**(VoiceMonitor): `pitch_changed(hz, midi)` `speaking_changed(speaking)` `started_speaking` `stopped_speaking`。`show_meter` で画面右上に、使っているマイク・音量としきい値・声の高さ・声の波を出しているか
 - 声の高さ: 8kHz に間引いて自己相関(YIN 簡易版)。`pitch_threshold` を下回る谷が無くても、`pitch_fallback_threshold` より深い谷があれば採用する(雑音のある実際の声向け)。取れた高さは `pitch_hold` 秒覚えておき、その間の中央値をとる
@@ -169,6 +169,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
   - 「途切れ」が毎秒何回も出る、または「取り込み」がミックスの値より少ない時は、マイクの音が途中で抜けている
   - 「左右の相関」が -1 に近い時は、左右の音が打ち消し合っている。`mic_channel` を左か右にする。片方だけ音量が大きい時も、そちらに合わせる
   - F5 で録った `voice_debug.wav` を聞くと、ゲームが実際に聞いている音を確かめられる
+- 以前は AudioStreamMicrophone を音声バスに流して取り込んでいたが、デバイスの標本化周波数(例 16kHz)と出力(例 96kHz)が違うと、音が同じ値の繰り返しや途切れだらけになり、声の高さが取れなかった。今は Godot 4.5 以降の `AudioServer.get_input_frames()` でデバイスから直接読む
 
 ### G. 通信とゲーム内VC `Net` / `Voice`
 - 接続: ENet、IP指定。`scenes/ui/connect_screen.tscn`(メインシーン)か起動引数
