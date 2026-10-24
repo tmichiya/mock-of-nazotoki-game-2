@@ -58,7 +58,7 @@ func both_on() -> void:
 
 
 func report_sync() -> void:
-	print("[AUTO] sync state=%d / %d" % [$SyncA1.state, $SyncA2.state])
+	print("[AUTO] sync state=%d / %d  looks waiting: A1=%s A2=%s" % [$SyncA1.state, $SyncA2.state, $SyncA1._color() == $SyncA1.color_waiting, $SyncA2._color() == $SyncA2.color_waiting])
 
 
 var _p1_mark := Vector2.ZERO

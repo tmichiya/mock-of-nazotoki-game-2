@@ -279,7 +279,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 ### Q. 謎の部品(追加)
 | 部品 | 内容 | 主な調整値 | シグナル |
 | --- | --- | --- | --- |
-| `SyncButton` | だいたい同時に踏まないと駄目なボタン。同じ `sync_group` のボタンを `window` 秒以内に全部踏むと成功。色:待機 / 待っている(残り時間の輪が縮む)/ 失敗(`fail_cooldown` 秒押せない)/ 成功。組の数だけ点が並び、踏まれた分だけ光る | `sync_group`、`window`(1.5秒)、`fail_cooldown`(3秒)、`stay_success`、`clear_event`、4つの色 | `pressed` `waiting_started` `failed` `succeeded` / `reset()` |
+| `SyncButton` | だいたい同時に踏まないと駄目なボタン。同じ `sync_group` のボタンを `window` 秒以内に全部踏むと成功。色:待機 / 待っている(残り時間の輪が縮む。**踏まれたボタンにだけ**出し、まだ踏まれていない側は待機の見た目のまま。見た目で「今押せ」と分からないように)/ 失敗(`fail_cooldown` 秒押せない)/ 成功。組の数だけ点が並び、成功すると全部光る | `sync_group`、`window`(1.5秒)、`fail_cooldown`(3秒)、`stay_success`、`clear_event`、4つの色 | `pressed` `waiting_started` `failed` `succeeded` / `reset()` |
 | `FixedMegaphone` | 地面に刺さった棒に固定された一方向メガホン。吹き口(後ろ)の近くで話すと、口の向きへ扇形に遠くまで、遅れて届く | `direction_deg`、`spread_deg`、`size_scale`、`delay_voice`、`use_radius`、`mouthpiece_offset` | `used_by(i)` `released_by(i)` |
 | `RotaryLever` | どんな物でも回せるレバー。つかんで左スティックを左右に倒している間、そちらへなめらかに回る(握っている人はその場から動かない)。離すと真ん中に戻る。`get_lever_rotation()`・`set_lever_rotation(ラジアン)` を持つ物はそれで、その他の Node2D は rotation で回す | `targets`、`rotate_speed_deg`、`limit_deg`、`required_players`、`clear_event`・`clear_angle_deg`・`clear_tolerance_deg` | `tilted(-1/0/1)` `rotation_changed(deg)` `pull_failed` |
 | `SingingBird`(追加) | 正解の音で鳴くと、金色・光の輪・頭の上の音符になる。和音の判定役がそろうと全部の鳥が喜ぶ | `correct_notes`、`stay_correct`・`correct_time`、`correct_color`、`clear_event` | `correct(midi)` / `celebrate()` `reset()` |
