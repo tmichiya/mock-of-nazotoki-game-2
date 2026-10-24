@@ -6,7 +6,8 @@ extends Node2D
 ## 画面に出す説明
 @export_multiline var help_text := ""
 
-const COMMON_HELP := "移動 WASD/左スティック  ポーズ Shift/LT・RT  腕 移動キー+IJKL/両スティック  挙げる Z,C/L3,R3  握る Q,E/LB,RB  滑空 Space/A\n2人目: 矢印  ポーズ /  腕 矢印+テンキー8456  挙げる テンキー7,9  握る , .  滑空 Enter    F1 段番号  F2 波の範囲"
+const COMMON_HELP := "移動 WASD/左スティック  走る(切替) Ctrl/Y  ポーズ Shift/LT・RT  腕 移動キー+IJKL/両スティック(伸ばすと自動でつかむ)  挙げる Z,C/L3,R3  離す X/B  滑空 Space/A
+2人目: 矢印  走る テンキー0  ポーズ /  腕 矢印+テンキー8456  挙げる テンキー7,9  離す テンキー.  滑空 Enter    F1 段番号  F2 波の範囲  F4 マイク"
 
 var _label: Label
 
@@ -78,6 +79,7 @@ func place(index: int, pos: Vector2) -> void:
 	var p := World.get_player_by_index(index) as Player
 	if p == null or not p.is_local:
 		return
+	p.release_all()
 	p.link_controlled = false
 	p.state = Player.State.WALK
 	p.velocity = Vector2.ZERO

@@ -31,10 +31,10 @@ func _steps() -> Array:
 		{ t = 1.0, log = "both present" },
 		{ t = 0.6, p1 = { pose = true, arm_l = Vector2(-1, -1), arm_r = Vector2(1, -1) }, p2 = { pose = true, arm_l = Vector2(0, 1), arm_r = Vector2(1, 0) } },
 		{ t = 0.2, log = "poses (P1 arms 5,7 / P2 arms 2,0 on both screens)", p1 = { pose = true, arm_l = Vector2(-1, -1), arm_r = Vector2(1, -1) }, p2 = { pose = true, arm_l = Vector2(0, 1), arm_r = Vector2(1, 0) } },
-		{ t = 0.3, call = "speak_on", log = "P1 speaks far (~224px) inside reach: expect IMMEDIATE" },
+		{ t = 0.3, call = "speak_on", log = "P1 speaks at 224px, beyond the max reach 210px: expect nothing" },
 		{ t = 0.1, call = "speak_off" },
 		{ t = 1.0 },
-		{ t = 0.3, call = "speak_quiet", log = "P1 speaks quietly: reach too short, expect nothing" },
+		{ t = 0.3, call = "speak_quiet", log = "P1 speaks quietly at 224px: expect nothing" },
 		{ t = 0.1, call = "speak_off" },
 		{ t = 1.0 },
 		{ t = 0.3, call = "megaphone_speak", log = "P1 speaks through a megaphone: expect by-wave delay ~1.3s" },
@@ -52,7 +52,7 @@ func _steps() -> Array:
 		{ t = 0.3, call = "speak_on", log = "linked across levels (P1 below): expect heard", p1 = { grab_r = true }, p2 = { grab_l = true } },
 		{ t = 0.1, call = "speak_off", p1 = { grab_r = true }, p2 = { grab_l = true } },
 		{ t = 1.0, p1 = { grab_r = true }, p2 = { grab_l = true } },
-		{ t = 0.5, p1 = { move = Vector2.LEFT }, log = "released" },
+		{ t = 0.5, p1 = { move = Vector2.LEFT, release = true }, log = "released" },
 		{ t = 0.3, call = "speak_on", log = "not linked, different levels: expect nothing" },
 		{ t = 0.1, call = "speak_off" },
 		{ t = 2.0, log = "done" },
@@ -92,6 +92,7 @@ func speak_off() -> void:
 func _place_local(index: int, pos: Vector2) -> void:
 	var p := World.get_player_by_index(index) as Player
 	if p and p.is_local:
+		p.release_all()
 		p.global_position = pos
 		p.height = World.height_at(pos)
 		p.velocity = Vector2.ZERO

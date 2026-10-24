@@ -381,14 +381,25 @@ func _send_voice(samples: PackedFloat32Array) -> void:
 		return
 	_chunk_counter += 1
 	var chunk_id := "%d-%d" % [Net.my_id(), _chunk_counter]
-	var size := _sustained_size(lerpf(settings.min_size, settings.max_size, _volume01))
+	var frac := _sustained_size(_level_fraction(_volume01))
+	var size := frac * settings.strength_scale
+	var reach := frac * settings.max_reach
 	var payload := { voice = chunk_id, audio = _encode(samples), speaker = p.player_index }
 	_visual_left -= settings.wave_interval
 	var visible := _visual_left <= 0.0
 	if visible:
 		_visual_left = settings.visual_interval
-	emit_voice_wave(p, size, payload, _pitch_hz, visible)
+	emit_voice_wave(p, size, payload, _pitch_hz, visible, reach)
 	voice_wave_sent.emit(size)
+
+
+## 音量(0〜1)を段階に分け、その段階の割合(voice_levels)を返す
+func _level_fraction(volume01: float) -> float:
+	var lv := settings.voice_levels
+	if lv.is_empty():
+		return 1.0
+	var i := clampi(int(volume01 * lv.size()), 0, lv.size() - 1)
+	return lv[i]
 
 
 ## 話し続けている間は、話し始めの大きさを保つ(「ん」など音の小さい所で波が小さくなって途切れないように)。
@@ -417,9 +428,11 @@ func _sustained_size(raw: float) -> float:
 
 ## 声の波を出す(手つなぎ中は相手の位置・段からも同じ声の波を出す)。
 ## visible = 波面と届く範囲の線を描くか(描かなくても、受け取りと声の再生には使う)
-func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float, visible: bool = true) -> void:
+func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float, visible: bool = true, reach: float = -1.0) -> void:
+	if reach <= 0.0:
+		reach = settings.max_reach * clampf(size / maxf(settings.strength_scale, 0.01), 0.0, 1.0)
 	var base := {
-		size = size, shape = settings.voice_shape.resource_path, source = p.source_id(),
+		size = size, reach = reach, shape = settings.voice_shape.resource_path, source = p.source_id(),
 		payload = payload, pitch = pitch, kind = "voice", hidden = not visible,
 	}
 	var a := base.duplicate()
@@ -429,6 +442,7 @@ func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float, 
 	a.reach_color = settings.reach_color
 	if not p.voice_modifier.is_empty():
 		a.size = size * float(p.voice_modifier.get("size_scale", 1.0))
+		a.reach = reach * float(p.voice_modifier.get("size_scale", 1.0))
 		a.dir = p.voice_modifier.get("dir", p.facing)
 		a.spread = p.voice_modifier.get("spread", PI)
 		if p.voice_modifier.get("delay_voice", false):

@@ -25,13 +25,13 @@ func _steps() -> Array:
 		{ t = 0.1, log = "one hand linked (linked=1, P1 R and P2 L marked L)", p1 = P1R, p2 = P2L },
 		{ t = 2.0, p1 = { grab_r = true, orbit = 1 }, p2 = P2L },
 		{ t = 0.05, log = "spinning (spin > 2.5)", p1 = { grab_r = true, orbit = 1 }, p2 = P2L },
-		{ t = 1.6, call = "mark_p1", p2 = P2L },
+		{ t = 1.6, call = "mark_p1", p1 = { release = true }, p2 = P2L },
 		{ t = 0.1, call = "report_throw", log = "after throw (landed)" },
 		# 両手 → 離すと反動(向かい合って縦に並ぶ:上の人は手前へ、下の人は奥へ腕を伸ばす)
 		{ t = 0.1, call = "setup_two_hands" },
 		{ t = 0.4, p1 = { pose = true, arm_l = Vector2(0, 1), arm_r = Vector2(0, 1), grab_l = true, grab_r = true }, p2 = { pose = true, arm_l = Vector2(0, -1), arm_r = Vector2(0, -1), grab_l = true, grab_r = true } },
 		{ t = 0.1, log = "two hands linked (linked=2)", p1 = { grab_l = true, grab_r = true }, p2 = { grab_l = true, grab_r = true } },
-		{ t = 1.0, call = "mark_both" },
+		{ t = 1.0, call = "mark_both", p1 = { release = true }, p2 = { release = true } },
 		{ t = 0.1, call = "report_recoil", log = "after recoil" },
 		# 1段の崖:つないだまま降りる → 引き上げ
 		{ t = 0.1, call = "setup_cross1" },
@@ -52,6 +52,12 @@ func _steps() -> Array:
 		{ t = 2.0, p1 = P1R, p2 = { grab_l = true, move = Vector2.RIGHT } },
 		{ t = 0.1, log = "pulled up from hang (P1 h=2)", p1 = P1R, p2 = P2L },
 		{ t = 0.3 },
+		# 自動でつかむ:LB/RB を押さず、ポーズ中に腕を向けるだけでつながる。離すのは B
+		{ t = 0.1, call = "setup_one_hand" },
+		{ t = 0.4, p1 = { pose = true, arm_r = Vector2(1, 0) }, p2 = { pose = true, arm_l = Vector2(-1, 0) } },
+		{ t = 0.3, log = "auto-linked without LB/RB (linked=1), stays after pose" },
+		{ t = 0.1, p1 = { release = true } },
+		{ t = 0.1, log = "P1 pressed release: unlinked" },
 	]
 
 
@@ -60,6 +66,7 @@ var _mark2 := Vector2.ZERO
 
 
 func _place(p: Player, cell: Vector2, offset := Vector2.ZERO) -> void:
+	p.release_all()
 	p.link_controlled = false
 	p.state = Player.State.WALK
 	p.velocity = Vector2.ZERO
