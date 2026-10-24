@@ -3,6 +3,10 @@ class_name SingingBird
 extends PuzzlePart
 ## 歌う鳥。届いた声(または楽器の音)の高さを、決められた数音のうち最も近い音で、きれいに鳴き直す。
 ## 鳴き声も音の波(種類 bird)として出す。和音の判定は ChordJudge に鳥をつないで行う。
+## 定期的に、正解の音(手本)で自分から鳴く。同じ組(call_group)の鳥は同時に鳴かず、
+## 決まった順に call_gap 秒ずつ空けて鳴き、一回りしたら call_rest 秒休む。
+## 手本の鳴き声も音の波(種類 bird)なので、声を食べる動物に食べさせて別の場所へ運べる。
+## 手本は sang ではなく called を出す(和音の判定役や正解には数えない)。
 
 ## 鳴いた(MIDI の音番号。60 = 真ん中のド)
 signal sang(midi: float)
@@ -12,6 +16,8 @@ signal out_of_tune(midi: float)
 signal heard(midi: float)
 ## 正解の音で鳴いた(correct_notes のどれか)
 signal correct(midi: float)
+## 自分から手本の音で鳴いた(定期的な鳴き声)
+signal called(midi: float)
 
 ## 鳴ける音(MIDI の音番号)。60=ド 62=レ 64=ミ 65=ファ 67=ソ 69=ラ 71=シ 72=上のド
 @export var notes := PackedFloat32Array([60, 64, 67]):
@@ -42,6 +48,21 @@ signal correct(midi: float)
 @export var clear_event: StringName = &""
 ## 正解の時の色と、頭の上の光
 @export var correct_color := Color("ffd84a")
+@export_group("定期的に鳴く")
+## 定期的に手本の音で鳴く
+@export var call_enabled := true
+## 手本の音(MIDI番号。-1 なら correct_notes の最初、それも無ければ notes の最初)
+@export var call_note := -1.0
+## 一緒に順番を決める組の名前(同じ名前の鳥は同時に鳴かない)。空なら「同じ親の下の鳥」が一つの組
+@export var call_group: StringName = &""
+## 組の中で、ある鳥が鳴いてから次の鳥が鳴くまでの間隔(秒)
+@export var call_gap := 2.5
+## 組の鳥が一回り鳴いた後に休む時間(秒)
+@export var call_rest := 4.0
+## 始まってから最初に鳴くまでの時間(秒)
+@export var call_start_delay := 2.0
+## 手本の鳴き声の波の大きさ(-1 なら song_size と同じ)
+@export var call_size := -1.0
 
 var last_note := -1.0
 var _last_time := -100.0
@@ -52,6 +73,9 @@ var _flash := 0.0
 var is_correct := false
 var _correct_left := 0.0
 var _celebrate := 0.0
+
+## 組ごとの順番(ホストだけが使う)。組の名前 -> { next = 次に鳴く時刻, idx = 次に鳴く鳥の番号 }
+static var _call_groups := {}
 
 
 func _ready() -> void:
@@ -68,6 +92,8 @@ func _ready() -> void:
 	_synth = ToneSynth.new()
 	add_child(_synth)
 	Waves.wave_emitted.connect(_on_any_wave)
+	add_to_group("singing_bird")
+	_call_groups.erase(_call_key())
 
 
 func _on_wave(info: Dictionary) -> void:
@@ -102,14 +128,77 @@ func hear_pitch(midi: float) -> void:
 		return
 	last_note = best
 	_last_time = Waves.clock
-	Waves.emit({
-		origin = global_position, level = get_level(), size = song_size,
-		shape = song_shape.resource_path, source = "bird:" + str(name),
-		pitch = PitchDetector.midi_to_hz(best), payload = { note = best },
-	})
+	_emit_song(best, song_size, false)
 	sang.emit(best)
 	if _is_correct_note(best):
 		_set_correct(true)
+
+
+func _emit_song(note: float, size: float, is_call: bool) -> void:
+	var payload := { note = note }
+	if is_call:
+		payload.call = true
+	Waves.emit({
+		origin = global_position, level = get_level(), size = size,
+		shape = song_shape.resource_path, source = "bird:" + str(name),
+		pitch = PitchDetector.midi_to_hz(note), payload = payload,
+	})
+
+
+# ---------------------------------------------------------------- 定期的に鳴く
+
+func _call_key() -> String:
+	if call_group != &"":
+		return str(call_group)
+	return str(get_parent().get_path()) if get_parent() else ""
+
+
+## 手本の音
+func get_call_note() -> float:
+	if call_note >= 0.0:
+		return call_note
+	if not correct_notes.is_empty():
+		return correct_notes[0]
+	return notes[0] if not notes.is_empty() else -1.0
+
+
+## 手本の音で鳴く(定期的に呼ばれる。シグナルから直接呼んでもよい)
+func call_now() -> void:
+	if not is_authority():
+		return
+	var n := get_call_note()
+	if n < 0.0:
+		return
+	last_note = n
+	_last_time = Waves.clock
+	_emit_song(n, call_size if call_size > 0.0 else song_size, true)
+	called.emit(n)
+
+
+func _physics_process(_delta: float) -> void:
+	if Engine.is_editor_hint() or not is_authority() or not call_enabled:
+		return
+	var key := _call_key()
+	var members := get_tree().get_nodes_in_group("singing_bird").filter(
+		func(b): return b.call_enabled and b._call_key() == key)
+	# 組の順番は、組の中で最初の鳥だけが進める
+	if members.is_empty() or members[0] != self:
+		return
+	var now := Waves.clock
+	if not _call_groups.has(key):
+		_call_groups[key] = { next = now + call_start_delay, idx = 0 }
+	var g: Dictionary = _call_groups[key]
+	# 組のどれかが(声に応えて)鳴いた直後なら、間隔を空けてから
+	for b in members:
+		g.next = maxf(g.next, b._last_time + call_gap)
+	if now < g.next:
+		return
+	var idx: int = g.idx % members.size()
+	members[idx].call_now()
+	g.idx = idx + 1
+	g.next = now + (call_rest if g.idx >= members.size() else call_gap)
+	if g.idx >= members.size():
+		g.idx = 0
 
 
 ## 自分の鳴き声の波が出た時に音を鳴らす(ホストでもクライアントでも)
@@ -120,7 +209,10 @@ func _on_any_wave(p: Dictionary) -> void:
 	_flash = 1.0
 	if not is_authority():
 		last_note = p.payload.get("note", -1.0)
-		sang.emit(last_note)
+		if p.payload.get("call", false):
+			called.emit(last_note)
+		else:
+			sang.emit(last_note)
 
 
 func _is_correct_note(n: float) -> bool:

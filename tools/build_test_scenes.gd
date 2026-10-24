@@ -367,6 +367,12 @@ func _build_bird() -> void:
 		var bottle := part(root, "instrument", bt[0], bt[1])
 		bottle.note = bt[2]
 		bottle.size = 1.4
+	# 鳥の手本の鳴き声を食べて、下の受け手へ吐き出す動物
+	var eater := part(root, "voice_eater", "Eater", Vector2(17, 3))
+	eater.direction = 2
+	eater.eat_kinds.assign([&"bird"])
+	var rb := receiver(root, "RBird", Vector2(17, 10))
+	rb.accept_kinds.assign([&"bird"])
 	inst(root, "res://scenes/parts/voice/voice_monitor.tscn")
 	add_common(root, Vector2(11, 5), Vector2(12, 5))
 	save(root, "res://scenes/tests/test_bird.tscn")
