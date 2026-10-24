@@ -34,3 +34,8 @@ func _steps() -> Array:
 
 func toggle_levels() -> void:
 	World.debug_levels = not World.debug_levels
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【地形・プレイヤー】斜面で上り下り / 段差は上からも下からも壁 / 高い段の後ろで輪郭 / 崖の縁で滑空し、影の位置に着地"

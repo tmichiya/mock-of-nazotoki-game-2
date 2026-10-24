@@ -64,3 +64,8 @@ func emit_sound() -> void:
 
 func set_right() -> void:
 	$Eater1.set_direction_index(0)
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【レバー・声を食べる動物】二人で手をつないでレバーを引く(一人では動かない)→ 動物の向きが変わる / 1キー: 音源Eを鳴らす"

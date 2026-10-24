@@ -104,3 +104,8 @@ func p2_to_plateau() -> void:
 func both_on_plateau_edge() -> void:
 	_place_local(1, Vector2(14 * 32 + 8, 7.5 * 24))
 	_place_local(2, Vector2(14 * 32 + 44, 7.5 * 24))
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【通信・VC】2つ起動して片方ホスト・片方参加。遠いと声が遅れて届く/近いとすぐ/段が違うと届かない/段をまたいで手をつなぐと届く"

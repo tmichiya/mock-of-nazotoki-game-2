@@ -46,3 +46,8 @@ func _physics_process(_delta: float) -> void:
 
 func _steps() -> Array:
 	return [{ t = 1.0, log = "6 poses" }]
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【腕のポーズ】左から 横・真上・斜め上・手前・奥・下ろす。下の2人で自分でも試せる(挙げる: Z/C・L3/R3)"

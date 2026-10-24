@@ -21,7 +21,7 @@ func _ready() -> void:
 	_label.add_theme_font_size_override("font_size", 14)
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_label.add_theme_constant_override("outline_size", 4)
-	_label.text = help_text + "\n" + COMMON_HELP
+	_label.text = _help() + "\n" + COMMON_HELP
 	layer.add_child(_label)
 	var ap := get_node_or_null("Autopilot") as Autopilot
 	if ap:
@@ -32,8 +32,13 @@ func _steps() -> Array:
 	return []
 
 
+## 画面に出す説明(派生のスクリプトで決める。無ければ help_text)
+func _help() -> String:
+	return help_text
+
+
 func set_status(text: String) -> void:
-	_label.text = help_text + "\n" + COMMON_HELP + "\n" + text
+	_label.text = _help() + "\n" + COMMON_HELP + "\n" + text
 
 
 var _sig_log: Array = []

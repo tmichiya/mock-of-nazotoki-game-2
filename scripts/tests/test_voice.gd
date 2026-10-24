@@ -76,3 +76,8 @@ func report() -> void:
 	print("[AUTO] volume_db=%.1f pitch=%.1fHz midi=%.1f (%s) waves=%d avg_size=%.2f" % [
 		Voice.get_volume_db(), Voice.get_pitch_hz(), Voice.get_pitch_midi(),
 		PitchDetector.midi_name(Voice.get_pitch_midi()), _sizes.size(), avg])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【マイク・声の波】話すとオレンジの位置から声の波。大きな声ほど大きな波。右上に音量と声の高さ(Hz・音名)"

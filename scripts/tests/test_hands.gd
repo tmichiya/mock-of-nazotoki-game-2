@@ -105,3 +105,8 @@ func setup_cross1() -> void:
 func setup_cross2() -> void:
 	_place(World.get_player_by_index(1), Vector2(15, 10), Vector2(-10, 0))
 	_place(World.get_player_by_index(2), Vector2(15, 10), Vector2(26, 0))
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【腕・手つなぎ】ポーズ / 片手で回転して離すと飛ぶ / 両手を離すと反動 / 1段の崖はつないだまま降りられる / 2段の崖は宙づり→揺らす→上の人が離れると引き上げ"

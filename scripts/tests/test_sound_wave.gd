@@ -98,3 +98,8 @@ func mark_fluff() -> void:
 
 func report_fluff() -> void:
 	print("[AUTO] fluff moved %.0f px" % $Fluff.global_position.distance_to(_fluff_start))
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【音の波】1:E0(0段) 2:E1(1段) 3:EA+EB同時 4:ずらす 5:楕円の焦点 6:綿毛を押す  ※受け取りと重なりは画面とログに出る"

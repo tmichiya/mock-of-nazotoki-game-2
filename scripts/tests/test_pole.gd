@@ -38,3 +38,8 @@ func at_ends() -> void:
 
 func report() -> void:
 	print("[AUTO] pole center=(%.0f,%.0f) angle=%.0fdeg" % [$Pole.global_position.x, $Pole.global_position.y, rad_to_deg($Pole.angle)])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【長い棒】両端で手を伸ばして握る(LB/RB)→ 二人で運ぶ・回す。柱や壁に当たると強さに応じた音の波"
