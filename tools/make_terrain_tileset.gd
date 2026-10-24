@@ -1,5 +1,5 @@
 extends SceneTree
-## 地形用タイルセット(parts/terrain/terrain_tileset.tres)を作り直すスクリプト。
+## 地形用タイルセット(resources/terrain/terrain_tileset.tres)を作り直すスクリプト。
 ## 段の色を LevelStyle から取り、パレットの見た目を合わせる。
 ## 実行: godot --headless --path . --script res://tools/make_terrain_tileset.gd
 ##
@@ -7,8 +7,8 @@ extends SceneTree
 
 const LEVELS := 8
 const SHAPES := 5
-const OUT := "res://parts/terrain/terrain_tileset.tres"
-const PNG := "res://parts/terrain/terrain_palette.png"
+const OUT := "res://resources/terrain/terrain_tileset.tres"
+const PNG := "res://textures/terrain/terrain_palette.png"
 
 const DIGITS := [
 	"111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001",
@@ -17,8 +17,8 @@ const DIGITS := [
 
 
 func _init() -> void:
-	var cfg: WorldConfig = load("res://core/world_config.tres")
-	var style: LevelStyle = load("res://core/level_style.tres")
+	var cfg: WorldConfig = load("res://resources/settings/world_config.tres")
+	var style: LevelStyle = load("res://resources/settings/level_style.tres")
 	var ts := cfg.tile_size
 	var img := Image.create(ts.x * SHAPES, ts.y * LEVELS, false, Image.FORMAT_RGBA8)
 	for lv in range(LEVELS):
