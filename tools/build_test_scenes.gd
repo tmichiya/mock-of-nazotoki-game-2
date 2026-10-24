@@ -22,6 +22,7 @@ var builders := {
 	"catalog": _build_catalog,
 	"clear": _build_clear,
 	"gimmicks": _build_gimmicks,
+	"fence": _build_fence,
 }
 
 
@@ -648,7 +649,12 @@ func _build_catalog() -> void:
 	bd.name = "BirdCorrect"
 	bd.correct_notes = PackedFloat32Array([60])
 	label(g, root, "回転レバー:つかんで左右に倒すと動物がゆっくり回る
-鳥:ドで鳴くと正解の見た目", o + Vector2(1, 1))
+鳥:ドで鳴くと正解の見た目
+柵:人も綿毛も通さず、音の波は通す", o + Vector2(1, 1))
+	var fc := inst(root, "res://scenes/parts/puzzle/fence.tscn", cell_center(o + Vector2(15, 4)), g)
+	fc.name = "Fence"
+	fc.length = 96.0
+	fc.rotation_degrees = 30.0
 
 	# 共通
 	inst(root, "res://scenes/parts/hands/hand_link_monitor.tscn")
@@ -731,3 +737,23 @@ func _build_gimmicks() -> void:
 	fx.listen_all = true
 	add_common(root, Vector2(2, 12), Vector2(3, 12))
 	save(root, "res://scenes/tests/test_gimmicks.tscn")
+
+
+# ---------------------------------------------------------------- 柵
+
+func _build_fence() -> void:
+	var root := flat_world("res://scripts/tests/test_fence.gd", "", Vector2i(24, 14))
+	var fh := part(root, "fence", "FenceH", Vector2(6, 6))
+	fh.length = 160.0
+	var fl := inst(root, "res://scenes/parts/props/fluff.tscn", cell_center(Vector2(6.3, 4)))
+	fl.name = "Fluff"
+	emitter(root, "EF", Vector2(6.3, 2.5), "generic", 1.6)
+	receiver(root, "R", Vector2(6.3, 9))
+	var fd := part(root, "fence", "FenceDiag", Vector2(12, 6))
+	fd.length = 128.0
+	fd.rotation_degrees = 45.0
+	var fv := part(root, "fence", "FenceV", Vector2(16, 6))
+	fv.length = 128.0
+	fv.angle_deg = 90.0
+	add_common(root, Vector2(5, 3), Vector2(2, 12))
+	save(root, "res://scenes/tests/test_fence.tscn")
