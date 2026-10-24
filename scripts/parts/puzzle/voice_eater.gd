@@ -16,7 +16,11 @@ enum SpitShape { STRAIGHT, FAN }
 @export_range(0, 7) var direction := 0:
 	set(v):
 		direction = posmod(v, 8)
+		facing_deg = direction * 45.0
 		queue_redraw()
+
+## 向き(度。0=右、90=下)。回転レバーなどでなめらかに回る。direction を決めるとこれも決まる
+var facing_deg := 0.0
 ## レバーの位置などの番号を向きに読み替える表(空なら番号=向き)。例: [0, 2, 4] なら 0→右, 1→下, 2→左
 @export var direction_map := PackedInt32Array()
 ## 吐き出す形:まっすぐ / 扇形
@@ -96,7 +100,7 @@ func _spit(info: Dictionary) -> void:
 	if payload.has("voice"):
 		payload.relay = get_source_id()
 	var shape_path := "res://resources/wave_shapes/voice.tres" if payload.has("voice") else "res://resources/wave_shapes/generic.tres"
-	var dir := PlayerInput.dir8(direction)
+	var dir := Vector2.from_angle(deg_to_rad(facing_deg))
 	var spread := deg_to_rad(straight_spread_deg if spit_shape == SpitShape.STRAIGHT else fan_spread_deg)
 	var size: float = maxf(min_spit_size, float(info.strength) * size_multiplier)
 	var p := {
@@ -140,14 +144,32 @@ func _set_direction(d: int) -> void:
 	sync_state()
 
 
+## 回転レバー(RotaryLever)から使う:今の向き(ラジアン)
+func get_lever_rotation() -> float:
+	return deg_to_rad(facing_deg)
+
+
+## 回転レバー(RotaryLever)から使う:向きをなめらかに変える(ラジアン)
+func set_lever_rotation(rad: float) -> void:
+	facing_deg = fposmod(rad_to_deg(rad), 360.0)
+	var d := posmod(roundi(facing_deg / 45.0), 8)
+	if d != direction:
+		direction = d
+		facing_deg = fposmod(rad_to_deg(rad), 360.0)
+		direction_changed.emit(direction)
+	queue_redraw()
+
+
 func get_state() -> Dictionary:
-	return { direction = direction }
+	return { direction = direction, facing = facing_deg }
 
 
 func apply_state(s: Dictionary) -> void:
 	if s.direction != direction:
 		direction = s.direction
 		direction_changed.emit(direction)
+	facing_deg = s.get("facing", direction * 45.0)
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -165,7 +187,7 @@ func _draw() -> void:
 	pts.append(pts[0])
 	draw_polyline(pts, Color(0, 0, 0, 0.6), 1.0)
 	# 口(向き)
-	var d := PlayerInput.dir8(direction)
+	var d := Vector2.from_angle(deg_to_rad(facing_deg))
 	var mouth := body + Vector2(d.x * 9.0, d.y * 7.0)
 	draw_line(mouth, mouth + d * 7.0, Color("402030"), 3.0)
 	var side := d.orthogonal() * 3.0

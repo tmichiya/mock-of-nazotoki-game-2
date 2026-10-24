@@ -16,6 +16,7 @@ static func empty_state() -> Dictionary:
 	return {
 		move = Vector2.ZERO, pose = false, arm_l = Vector2.ZERO, arm_r = Vector2.ZERO,
 		grab_l = false, grab_r = false, raise_l = false, raise_r = false, glide = false, instrument = false,
+		run = false, release = false, running = false,
 	}
 
 
@@ -34,6 +35,8 @@ func read() -> Dictionary:
 	var instrument := false
 	var raise_l := false
 	var raise_r := false
+	var run := false
+	var release := false
 	if keyboard != Keyboard.NONE:
 		var c := config
 		var a := keyboard == Keyboard.A
@@ -48,6 +51,8 @@ func read() -> Dictionary:
 		instrument = _k(c.a_instrument if a else c.b_instrument) > 0.0
 		raise_l = _k(c.a_raise_left if a else c.b_raise_left) > 0.0
 		raise_r = _k(c.a_raise_right if a else c.b_raise_right) > 0.0
+		run = _k(c.a_run if a else c.b_run) > 0.0
+		release = _k(c.a_release if a else c.b_release) > 0.0
 	var arm_l := move
 	var arm_r := arm_r_kb
 	if joy_device >= 0 and joy_device in Input.get_connected_joypads():
@@ -72,6 +77,8 @@ func read() -> Dictionary:
 		instrument = instrument or Input.is_joy_button_pressed(d, config.instrument_button)
 		raise_l = raise_l or Input.is_joy_button_pressed(d, config.raise_left_button)
 		raise_r = raise_r or Input.is_joy_button_pressed(d, config.raise_right_button)
+		run = run or Input.is_joy_button_pressed(d, config.run_button)
+		release = release or Input.is_joy_button_pressed(d, config.release_button)
 	if move.length() > 1.0:
 		move = move.normalized()
 	s.move = move
@@ -84,6 +91,8 @@ func read() -> Dictionary:
 	s.instrument = instrument
 	s.raise_l = raise_l
 	s.raise_r = raise_r
+	s.run = run
+	s.release = release
 	return s
 
 

@@ -9,6 +9,8 @@ signal offered(stage: int)
 ## かけらが足りない時に立った
 signal not_enough(have: int, need: int)
 
+## 捧げた時に知らせる「○○をクリア」の名前(空なら知らせない)。2回目以降は「名前_2」のように番号が付く
+@export var clear_event: StringName = &""
 ## 1回の捧げに必要なかけらの数
 @export var required := 3
 ## 上に立っているとみなす半径(px)
@@ -61,6 +63,8 @@ func try_offer() -> void:
 		shape = song_shape.resource_path, source = "offering:" + str(name), global = true, stage = stage,
 	})
 	offered.emit(stage)
+	if clear_event != &"":
+		Clears.clear(clear_event if stage == 1 else StringName("%s_%d" % [clear_event, stage]))
 	queue_redraw()
 
 

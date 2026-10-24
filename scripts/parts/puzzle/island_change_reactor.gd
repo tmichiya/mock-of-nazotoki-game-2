@@ -14,6 +14,8 @@ signal moved
 enum Action { APPEAR, DISAPPEAR, FALL, MOVE }
 enum Compare { EXACT, AT_LEAST }
 
+## 変化した時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 何回目の捧げ(歌の波の段階)で反応するか
 @export var stage := 1
 ## EXACT = その段階の時だけ / AT_LEAST = その段階以上なら
@@ -76,6 +78,8 @@ func _begin() -> void:
 	if action == Action.APPEAR:
 		_set_visible_content(true)
 	changed.emit()
+	if is_authority():
+		Clears.clear(clear_event)
 
 
 func _process(delta: float) -> void:

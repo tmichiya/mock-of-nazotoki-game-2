@@ -8,6 +8,8 @@ signal pressed
 signal released
 signal state_changed(is_on: bool)
 
+## 押された時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 乗っているとみなす半径(px)
 @export var radius := 10.0:
 	set(v):
@@ -62,6 +64,8 @@ func _apply_on(v: bool) -> void:
 	state_changed.emit(v)
 	if v:
 		pressed.emit()
+		if is_authority():
+			Clears.clear(clear_event)
 	else:
 		released.emit()
 

@@ -20,6 +20,8 @@ var builders := {
 	"offering": _build_offering,
 	"extras": _build_extras,
 	"catalog": _build_catalog,
+	"clear": _build_clear,
+	"gimmicks": _build_gimmicks,
 }
 
 
@@ -451,7 +453,7 @@ func _build_catalog() -> void:
 	var root := new_world("res://scripts/tests/catalog.gd",
 		"【部品カタログ】全部品。1:段のちがう音 2:楕円 3:重なる石 4:綿毛 5:カエル 6:動物 / F1 段番号 F2 波の範囲 F3 誰の目で見るか")
 	var t := add_terrain(root)
-	fill(t, Rect2i(0, 0, 66, 39), 0)
+	fill(t, Rect2i(0, 0, 66, 52), 0)
 
 	# --- 地形(0,0)
 	var o := Vector2(0, 0)
@@ -601,9 +603,131 @@ func _build_catalog() -> void:
 	slope(t, Vector2i(int(o.x) + 16, 31), 1, S.S)
 	label(g, root, "D 手つなぎ:広場で片手の回転投げ・両手の反動\n右の崖(1段・2段)はつないだまま降りる・宙づり", o + Vector2(1, 1))
 
+	# --- クリアの窓口とゴール(0,3)
+	o = Vector2(0, 39)
+	g = group(root, "Clear")
+	var fl2 := inst(root, "res://scenes/parts/props/fluff.tscn", cell_center(o + Vector2(5, 3)), g)
+	fl2.name = "Fluff2"
+	iemit(root, g, "EFluff2", o + Vector2(3, 3), "generic", 1.6)
+	var goal := inst(root, "res://scenes/parts/clear/fluff_goal.tscn", cell_center(o + Vector2(7, 3)), g)
+	goal.name = "FluffGoal"
+	goal.clear_event = &"fluff_done"
+	var blk := inst(root, "res://scenes/parts/clear/clear_reactor.tscn", cell_center(o + Vector2(10, 3)), g)
+	blk.name = "Block"
+	blk.listen.assign([&"fluff_done"])
+	inst(root, "res://scenes/parts/puzzle/long_pole.tscn", cell_center(o + Vector2(5, 8)), g).name = "Pole2"
+	var sk := inst(root, "res://scenes/parts/clear/pole_socket.tscn", cell_center(o + Vector2(14, 8)), g)
+	sk.name = "Socket"
+	sk.clear_event = &"pole_done"
+	var fx := inst(root, "res://scenes/parts/clear/clear_fx.tscn", cell_center(o + Vector2(11, 6)), g)
+	fx.name = "Fx"
+	fx.listen_all = true
+	label(g, root, "クリアの窓口:綿毛を花へ→fluff_done で箱が消える
+棒を型へ→pole_done / ClearFx が演出", o + Vector2(1, 1))
+
+	# --- 同時押しと固定メガホン(1,3)
+	o = Vector2(22, 39)
+	g = group(root, "SyncMega")
+	var s1 := inst(root, "res://scenes/parts/puzzle/sync_button.tscn", cell_center(o + Vector2(3, 4)), g)
+	s1.name = "SyncA1"
+	s1.clear_event = &"sync_done"
+	inst(root, "res://scenes/parts/puzzle/sync_button.tscn", cell_center(o + Vector2(7, 4)), g).name = "SyncA2"
+	var mg := inst(root, "res://scenes/parts/puzzle/fixed_megaphone.tscn", cell_center(o + Vector2(13, 8)), g)
+	mg.name = "Megaphone"
+	label(g, root, "同時押しボタン(二人で1.5秒以内に)
+固定メガホン(後ろで話すと右へ遠く・遅れて)", o + Vector2(1, 1))
+
+	# --- 回転レバーと正解する鳥(2,3)
+	o = Vector2(44, 39)
+	g = group(root, "RotaryBird")
+	var rl := inst(root, "res://scenes/parts/puzzle/rotary_lever.tscn", cell_center(o + Vector2(4, 4)), g)
+	rl.name = "RotaryLever"
+	rl.targets.assign([NodePath("../Eater3")])
+	inst(root, "res://scenes/parts/puzzle/voice_eater.tscn", cell_center(o + Vector2(9, 4)), g).name = "Eater3"
+	var bd := inst(root, "res://scenes/parts/puzzle/singing_bird.tscn", cell_center(o + Vector2(14, 8)), g)
+	bd.name = "BirdCorrect"
+	bd.correct_notes = PackedFloat32Array([60])
+	label(g, root, "回転レバー:つかんで左右に倒すと動物がゆっくり回る
+鳥:ドで鳴くと正解の見た目", o + Vector2(1, 1))
+
 	# 共通
 	inst(root, "res://scenes/parts/hands/hand_link_monitor.tscn")
 	inst(root, "res://scenes/parts/voice/voice_monitor.tscn")
 	inst(root, "res://scenes/parts/sound_wave/debug_options.tscn")
 	add_common(root, Vector2(27, 22), Vector2(29, 22))
 	save(root, "res://scenes/catalog.tscn")
+
+
+# ---------------------------------------------------------------- クリアの窓口・ゴール
+
+func cpart(root: Node, kind: String, nm: String, c: Vector2) -> Node:
+	var n := inst(root, "res://scenes/parts/clear/%s.tscn" % kind, cell_center(c))
+	n.name = nm
+	return n
+
+
+func _build_clear() -> void:
+	var root := flat_world("res://scripts/tests/test_clear.gd", "", Vector2i(24, 14))
+	var fl := inst(root, "res://scenes/parts/props/fluff.tscn", cell_center(Vector2(5, 3)))
+	fl.name = "Fluff"
+	emitter(root, "EFluff", Vector2(3, 3), "generic", 1.6)
+	var goal := cpart(root, "fluff_goal", "Goal", Vector2(7, 3))
+	goal.clear_event = &"fluff_done"
+	var block := cpart(root, "clear_reactor", "BlockA", Vector2(10, 3))
+	block.listen.assign([&"fluff_done"])
+	block.action = 1
+	var pole := part(root, "long_pole", "Pole", Vector2(5, 9))
+	var sock := cpart(root, "pole_socket", "Socket", Vector2(12, 9))
+	sock.clear_event = &"pole_done"
+	var door := part(root, "door", "Door", Vector2(16, 9))
+	door.vertical = true
+	var opener := cpart(root, "clear_reactor", "OpenDoor", Vector2(16, 11))
+	opener.listen.assign([&"pole_done"])
+	opener.action = 4
+	opener.targets.assign([NodePath("../Door")])
+	var bridge := cpart(root, "clear_reactor", "Bridge", Vector2(19, 6))
+	bridge.listen.assign([&"fluff_done", &"pole_done"])
+	bridge.action = 0
+	var both := cpart(root, "clear_listener", "BothDone", Vector2.ZERO)
+	both.listen.assign([&"fluff_done", &"pole_done"])
+	var fx := cpart(root, "clear_fx", "Fx", Vector2(11, 6))
+	fx.listen_all = true
+	add_common(root, Vector2(3, 12), Vector2(5, 12))
+	save(root, "res://scenes/tests/test_clear.tscn")
+
+
+# ---------------------------------------------------------------- 同時押し・固定メガホン・回転レバー・正解する鳥
+
+func _build_gimmicks() -> void:
+	var root := flat_world("res://scripts/tests/test_gimmicks.gd", "", Vector2i(30, 16))
+	var a1 := part(root, "sync_button", "SyncA1", Vector2(3, 3))
+	a1.clear_event = &"sync_done"
+	part(root, "sync_button", "SyncA2", Vector2(7, 3))
+	var wall := cpart(root, "clear_reactor", "SyncWall", Vector2(5, 6))
+	wall.listen.assign([&"sync_done"])
+	wall.action = 1
+	var lever := part(root, "rotary_lever", "Lever", Vector2(12, 3))
+	lever.targets.assign([NodePath("../Plate"), NodePath("../Eater")])
+	lever.clear_event = &"turned"
+	lever.clear_angle_deg = 90.0
+	var plate := Node2D.new()
+	plate.name = "Plate"
+	plate.position = cell_center(Vector2(15, 3))
+	add(root, plate)
+	var pl := Polygon2D.new()
+	pl.polygon = PackedVector2Array([Vector2(-14, -3), Vector2(14, -3), Vector2(14, 3), Vector2(-14, 3)])
+	pl.color = Color("9c7b4f")
+	plate.add_child(pl)
+	pl.owner = root
+	part(root, "voice_eater", "Eater", Vector2(18, 3))
+	var mega := part(root, "fixed_megaphone", "Megaphone", Vector2(5, 9))
+	receiver(root, "RFar", Vector2(20, 9))
+	receiver(root, "RSide", Vector2(5, 14))
+	var bird := part(root, "singing_bird", "Bird", Vector2(12, 9))
+	bird.notes = PackedFloat32Array([60, 64, 67])
+	bird.correct_notes = PackedFloat32Array([60])
+	bird.clear_event = &"bird_ok"
+	var fx := cpart(root, "clear_fx", "Fx", Vector2(10, 7))
+	fx.listen_all = true
+	add_common(root, Vector2(2, 12), Vector2(3, 12))
+	save(root, "res://scenes/tests/test_gimmicks.tscn")

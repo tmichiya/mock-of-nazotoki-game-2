@@ -8,6 +8,8 @@ signal opened
 signal closed
 signal state_changed(is_open: bool)
 
+## 開いた時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 扉の幅(px)
 @export var width := 32.0:
 	set(v):
@@ -107,6 +109,8 @@ func _apply_open(v: bool) -> void:
 	state_changed.emit(v)
 	if v:
 		opened.emit()
+		if is_authority():
+			Clears.clear(clear_event)
 	else:
 		closed.emit()
 

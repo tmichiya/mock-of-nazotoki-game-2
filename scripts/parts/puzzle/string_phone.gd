@@ -7,6 +7,8 @@ extends PuzzlePart
 signal connected
 signal disconnected
 
+## 糸が張ってつながった時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 糸の長さ(px)。これより離れると張りすぎて切れはしないが、引っ張られる
 @export var length := 160.0
 ## 長さのこの割合以上離れていると「張っている」
@@ -64,6 +66,7 @@ func _physics_process(_delta: float) -> void:
 		is_connected_now = on
 		if on:
 			connected.emit()
+			Clears.clear(clear_event)
 		else:
 			disconnected.emit()
 		sync_state()

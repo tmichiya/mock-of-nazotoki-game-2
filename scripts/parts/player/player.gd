@@ -40,6 +40,19 @@ enum BodyDir { DOWN, UP, LEFT, RIGHT }
 @export var move_speed := 72.0
 ## 加速の速さ(大きいほどキビキビ)
 @export var acceleration := 900.0
+## 走る速さ(歩く速さの何倍か)。走る/歩くは Y ボタン(キーボードは Ctrl)で切り替え、止まると歩きに戻る
+@export var run_speed_scale := 1.5
+## 止まってから歩きに戻るまでの時間(秒)
+@export var run_stop_time := 0.25
+## 走っている時に体を上下に揺らす量(px)と速さ(1秒に何回)
+@export var run_bob_px := 1.5
+@export var run_bob_hz := 4.0
+## 歩いている時に体を上下に揺らす量(px。0 で揺らさない)
+@export var walk_bob_px := 0.0
+
+@export_group("つかむ")
+## ポーズ中に腕を伸ばすと、その手は自動で「握る」(近くの物や相手の手をつかむ)。離すのは B ボタン(キーボードは X)
+@export var auto_grab := true
 
 @export_group("滑空")
 ## 足元との高さの差がこの段数以上ある崖の縁で滑空できる
@@ -139,6 +152,14 @@ var _net_target_height := 0.0
 var _has_net_target := false
 var _send_timer := 0.0
 var _flash := 0.0
+# 自分で操作している時の、走る・握るの切り替え状態
+var _running := false
+var _run_btn_prev := false
+var _release_prev := false
+var _stopped_time := 0.0
+var _grip_latch := [false, false]
+var _move_locks := {}          # 動けなくしている仕組みの名前 -> true
+var _bob_phase := 0.0
 
 @onready var visual: Node2D = $Visual
 @onready var shadow: Node2D = $Shadow
@@ -198,7 +219,8 @@ func _update_colors() -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_local:
-		input = _reader.read() if input_override == null else input_override
+		input = _reader.read() if input_override == null else input_override.duplicate()
+		_apply_local_controls(delta)
 		if Net.is_online() and not Net.is_host():
 			_rpc_input.rpc_id(1, input)
 	else:
@@ -214,10 +236,76 @@ func _physics_process(delta: float) -> void:
 		_follow_net_arms(delta)
 
 
+## 自分で操作している時だけ:走る/歩くの切り替えと、握ったままにする(離すボタンまで)を入力に書き込む。
+## 書き込んだ入力をホストにも送るので、どの端末でも同じ判定になる
+func _apply_local_controls(delta: float) -> void:
+	var run_btn: bool = input.get("run", false)
+	if run_btn and not _run_btn_prev:
+		_running = not _running
+	_run_btn_prev = run_btn
+	if input.move.length() < 0.1:
+		_stopped_time += delta
+		if _stopped_time >= run_stop_time:
+			_running = false
+	else:
+		_stopped_time = 0.0
+	input.running = _running
+	var rel: bool = input.get("release", false)
+	if rel and not _release_prev:
+		_grip_latch = [false, false]
+	_release_prev = rel
+	if not rel:
+		# LB/RB を押した手、ポーズ中に伸ばした手は、離すボタンを押すまで握ったまま
+		if input.grab_l:
+			_grip_latch[0] = true
+		if input.grab_r:
+			_grip_latch[1] = true
+		if auto_grab and input.pose:
+			if input.arm_l.length() >= arm_deadzone or input.raise_l:
+				_grip_latch[0] = true
+			if input.arm_r.length() >= arm_deadzone or input.raise_r:
+				_grip_latch[1] = true
+	input.grab_l = _grip_latch[0]
+	input.grab_r = _grip_latch[1]
+
+
+## 走っているか(体の上下の揺れにも使う)
+func is_running() -> bool:
+	return bool(input.get("running", false))
+
+
+## その場から動けなくする(レバーを握っている時など)。スティックは入力として残るので、物の側が使える。
+## owner_key は止めた仕組みの名前。ホストで呼ぶと、この体を動かしている端末にも伝わる
+func set_move_locked(owner_key: String, on: bool) -> void:
+	if on:
+		_move_locks[owner_key] = true
+	else:
+		_move_locks.erase(owner_key)
+	if Net.is_online() and multiplayer.is_server() and owner_peer != Net.my_id():
+		_rpc_move_lock.rpc_id(owner_peer, owner_key, on)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_move_lock(owner_key: String, on: bool) -> void:
+	if on:
+		_move_locks[owner_key] = true
+	else:
+		_move_locks.erase(owner_key)
+
+
+func is_move_locked() -> bool:
+	return not _move_locks.is_empty()
+
+
+## 自分のつかんでいる物・つないでいる手を全部離す(離すボタンと同じ。この端末で操作している時だけ効く)
+func release_all() -> void:
+	_grip_latch = [false, false]
+
+
 func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 2.5)
 	# 見た目は整数ピクセルにそろえる(当たり判定は動かさない)
-	var base := World.height_offset(height)
+	var base := World.height_offset(height) + Vector2(0, _bob(delta))
 	var snap := global_position.round() - global_position
 	visual.position = (base + snap).round()
 	outline.position = visual.position
@@ -265,8 +353,8 @@ func _walk(delta: float) -> void:
 	var posing: bool = input.pose
 	_set_state(State.POSE if posing else State.WALK)
 	var want := Vector2.ZERO
-	if not posing:
-		want = input.move * move_speed
+	if not posing and _move_locks.is_empty():
+		want = input.move * move_speed * (run_speed_scale if input.get("running", false) else 1.0)
 		if input.move.length() > 0.1:
 			facing = input.move.normalized()
 	else:
@@ -281,6 +369,19 @@ func _walk(delta: float) -> void:
 
 func is_posing() -> bool:
 	return state == State.POSE
+
+
+## 歩く・走る時の体の上下の揺れ(見た目だけ。上にだけ跳ねる)
+func _bob(delta: float) -> float:
+	var speed := velocity.length()
+	if is_airborne() or speed < 5.0:
+		_bob_phase = 0.0
+		return 0.0
+	var amp := run_bob_px if speed > move_speed * 1.15 else walk_bob_px
+	if amp <= 0.0:
+		return 0.0
+	_bob_phase += delta * run_bob_hz * PI * (speed / (move_speed * run_speed_scale))
+	return -absf(sin(_bob_phase)) * amp
 
 
 ## 崖の縁なら滑空を始める。始めたら true
@@ -398,7 +499,8 @@ func _update_arms(delta: float) -> void:
 		_prev_pose = posing
 		pose_changed.emit(posing)
 	for h in [Hand.LEFT, Hand.RIGHT]:
-		arm_grip[h] = is_gripping(h)
+		# 握ったままにしていても、何もつかまず腕も下ろしている時は開いた手に見せる
+		arm_grip[h] = is_gripping(h) and (_link[h] != null or held_objects[h] != null or is_posing())
 		var lk = _link[h]
 		if lk != null:
 			arm_extended[h] = true

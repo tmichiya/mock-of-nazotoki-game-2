@@ -24,7 +24,7 @@ func _steps() -> Array:
 		{ t = 0.1, call = "report", log = "only P2 moved: pole rotated", p1 = { grab_r = true }, p2 = { grab_l = true } },
 		{ t = 5.0, p1 = { grab_r = true, move = Vector2.RIGHT }, p2 = { grab_l = true, move = Vector2.RIGHT } },
 		{ t = 0.1, call = "report", log = "pushed into the wall: expect hit(size)", p1 = { grab_r = true }, p2 = { grab_l = true } },
-		{ t = 0.3 },
+		{ t = 0.3, p1 = { release = true }, p2 = { release = true } },
 		{ t = 0.1, call = "report", log = "released" },
 	]
 

@@ -29,7 +29,26 @@ func _steps() -> Array:
 		{ t = 1.6, move = Vector2.LEFT },
 		{ t = 0.1, log = "walked west on level1" },
 		{ t = 0.5 },
+		# 走る:Y(Ctrl)で切り替え、1.5倍の速さ。止まると歩きに戻る
+		{ t = 0.05, call = "mark", p1 = { run = true, move = Vector2.LEFT } },
+		{ t = 1.0, p1 = { move = Vector2.LEFT } },
+		{ t = 0.05, call = "report_speed", log = "ran 1s (expect ~108 px)" },
+		{ t = 0.5 },
+		{ t = 0.05, call = "mark", p1 = { move = Vector2.RIGHT } },
+		{ t = 1.0, p1 = { move = Vector2.RIGHT } },
+		{ t = 0.05, call = "report_speed", log = "after stopping, walks again (expect ~72 px)" },
 	]
+
+
+var _mark := Vector2.ZERO
+
+
+func mark() -> void:
+	_mark = World.get_player_by_index(1).global_position
+
+
+func report_speed() -> void:
+	print("[AUTO] moved %.0f px" % World.get_player_by_index(1).global_position.distance_to(_mark))
 
 
 func toggle_levels() -> void:

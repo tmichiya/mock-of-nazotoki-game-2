@@ -18,6 +18,8 @@ extends Control
 	"res://scenes/tests/test_bird.tscn",
 	"res://scenes/tests/test_offering.tscn",
 	"res://scenes/tests/test_extras.tscn",
+	"res://scenes/tests/test_clear.tscn",
+	"res://scenes/tests/test_gimmicks.tscn",
 ])
 
 @onready var _ip: LineEdit = %IP

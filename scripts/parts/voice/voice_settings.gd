@@ -29,10 +29,12 @@ extends Resource
 @export_group("声の波")
 ## 何秒ごとに声の波を出すか(この長さの声がひとつの波に乗る)
 @export var wave_interval := 0.1
-## 一番小さい声の波の大きさ
-@export var min_size := 0.35
-## 一番大きい声の波の大きさ
-@export var max_size := 2.2
+## 一番大きい声の波が届く距離(px)。画面に映る範囲(横640px)の約6割半の円になる
+@export var max_reach := 210.0
+## 声の大きさの段階(max_reach に掛ける割合)。小さい声から順に。音量をこの数に等分して当てはめる
+@export var voice_levels := PackedFloat32Array([0.4, 0.6, 0.8, 1.0])
+## 声の波の「強さ」(カエルを起こす・物を押す等に使う)。段階の割合に掛ける
+@export var strength_scale := 1.5
 ## 声の波の形
 @export var voice_shape: WaveShape = preload("res://resources/wave_shapes/voice.tres")
 ## 話している間、波面を描く間隔(秒)。声そのものは wave_interval ごとに送るが、描くのはこの間隔だけ

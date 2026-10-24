@@ -7,6 +7,8 @@ signal chord_completed
 ## 揃った音の数が変わった
 signal progress_changed(matched: int, needed: int)
 
+## クリアした時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 判定する鳥
 @export var birds: Array[NodePath] = []
 ## そろえる音(MIDI の音番号)
@@ -58,6 +60,11 @@ func _on_sang(midi: float) -> void:
 		_done = true
 		_recent.clear()
 		chord_completed.emit()
+		Clears.clear(clear_event)
+		for path in birds:
+			var b := get_node_or_null(path)
+			if b and b.has_method("celebrate"):
+				b.celebrate()
 
 
 func reset() -> void:

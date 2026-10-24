@@ -18,6 +18,11 @@ enum PoseTrigger { LT, RT, EITHER }
 ## 押している間、その腕を上へ挙げる(L3 / R3)
 @export var raise_left_button := JOY_BUTTON_LEFT_STICK
 @export var raise_right_button := JOY_BUTTON_RIGHT_STICK
+## 走る/歩くを切り替えるボタン(既定は上のボタン。Xbox の Y)
+@export var run_button := JOY_BUTTON_Y
+## つかんでいる物・つないでいる手を全部離すボタン(戻るボタン)。既定は右のボタン(Xbox の B)。
+## Switch の並び(下が B)にしたい時は JOY_BUTTON_A にして、滑空(glide_button)を別のボタンにする
+@export var release_button := JOY_BUTTON_B
 ## 楽器(瓶笛など)を鳴らすボタン
 @export var instrument_button := JOY_BUTTON_X
 
@@ -38,6 +43,8 @@ enum PoseTrigger { LT, RT, EITHER }
 @export var a_raise_right := KEY_C
 @export var a_glide := KEY_SPACE
 @export var a_instrument := KEY_R
+@export var a_run := KEY_CTRL
+@export var a_release := KEY_X
 
 @export_group("キーボードB(1台で2人を動かす時の2人目)")
 @export var b_up := KEY_UP
@@ -55,6 +62,8 @@ enum PoseTrigger { LT, RT, EITHER }
 @export var b_raise_right := KEY_KP_9
 @export var b_glide := KEY_ENTER
 @export var b_instrument := KEY_BACKSLASH
+@export var b_run := KEY_KP_0
+@export var b_release := KEY_KP_PERIOD
 
 
 static var _default: InputConfig
