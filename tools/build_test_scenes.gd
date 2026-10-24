@@ -8,6 +8,7 @@ const S := { FLAT = 0, N = 1, S = 2, E = 3, W = 4 }
 var builders := {
 	"terrain": _build_terrain,
 	"hands": _build_hands,
+	"arms": _build_arms,
 	"sound_wave": _build_sound_wave,
 	"voice": _build_voice,
 	"net": _build_net,
@@ -142,6 +143,17 @@ func _build_hands() -> void:
 	root.get_node("SpawnPoint2").position += Vector2(24, 0)
 	inst(root, "res://scenes/parts/hands/hand_link_monitor.tscn")
 	save(root, "res://scenes/tests/test_hands.tscn")
+
+
+# ---------------------------------------------------------------- C 腕のポーズの読み分け
+
+func _build_arms() -> void:
+	var root := new_world("res://scripts/tests/test_arms.gd",
+		"【腕のポーズ】左から 横・真上・斜め上・手前・奥・下ろす。下の2人で自分でも試せる(挙げる: Z/C・L3/R3)")
+	var t := add_terrain(root)
+	fill(t, Rect2i(0, 0, 18, 10), 0)
+	add_common(root, Vector2(7, 7), Vector2(9, 7))
+	save(root, "res://scenes/tests/test_arms.tscn")
 
 
 # ---------------------------------------------------------------- E 音の波

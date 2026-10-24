@@ -3,18 +3,25 @@ extends CharacterBody2D
 ## プレイヤー。地面の上を動き(position = 地面の位置)、高さ height(段)は足元の地形から決まる。
 ## 見た目は height の分だけ上にずらして描き、影は常に足元の地形の高さに描く。
 ##
-## 操作: 左スティック移動 / トリガー長押しでポーズ(両スティックで両腕を8方向に)/
-##       LB・RB 長押しで左手・右手を伸ばす / A で崖の縁から滑空
-## 「左」は常に「画面の左側に見える腕」(ポーズ中のキャラにとっては右腕)。
+## 操作: 左スティック移動 / トリガー長押しでポーズ(止まってカメラ側を向き、両スティックで両腕)/
+##       L3・R3 長押しでその腕を挙げる / LB・RB 長押しで左手・右手で握る / A で崖の縁から滑空
+## 「左腕」は、カメラ側を向いた時に画面の左に来る腕。
+##
+## 腕は「紙人形方式」:体は絵、腕は「肩から手への線+目立つ色の丸い手」をプログラムで描く。
+## 腕の向きは 3D のベクトル(x = 画面の右、y = 手前、z = 上)で持ち、描く時に画面へ写す。
+## 判定(手つなぎ・つかむ)は地面の上の位置で行い、描く倍率はかけない。
 
 signal state_changed(new_state: int)
 signal glide_started
 signal landed
-signal pose_changed(posing: bool, arm_left: int, arm_right: int)
+signal pose_changed(posing: bool)
 signal wave_touched(source_id: String, strength: float)
 
 enum State { WALK, POSE, GLIDE, FLY, HANG, CLIMB }
-enum Side { LEFT, RIGHT }
+## 腕(手)。Godot には Side というグローバルの enum があるので、名前は Hand にしている
+enum Hand { LEFT, RIGHT }
+## 体の向き(体の絵を選ぶ・肩の位置を決める)
+enum BodyDir { DOWN, UP, LEFT, RIGHT }
 
 @export_group("見た目")
 ## 体の色(2人の見分けに使う)
@@ -23,8 +30,8 @@ enum Side { LEFT, RIGHT }
 		body_color = v
 		if is_inside_tree():
 			_update_colors()
-## 手の色(手をつないでいるかが一目で分かるよう、体と違う色にする)
-@export var hand_color := Color("fff4d8")
+## 手の色(体と別の目立つ色。手をつないでいるかが一目で分かるように)
+@export var hand_color := Color(1.0, 0.93, 0.55)
 ## 体の大きさ(px)。物陰の判定と輪郭に使う
 @export var body_size := Vector2(12, 18)
 
@@ -51,12 +58,36 @@ enum Side { LEFT, RIGHT }
 @export var fly_gravity := 9.0
 
 @export_group("腕")
-## 腕の長さ(px、画面上)
-@export var arm_length := 8.0
-## 手を伸ばした時の腕の長さ(px)
-@export var reach_length := 13.0
-## 肩の位置(足元から、画面上)
-@export var shoulder_offset := Vector2(5, -11)
+## 腕の長さ(px)。手つなぎ・つかむ判定に使う長さ(描く倍率はかけない)
+@export var arm_length := 13.0
+## 目標の向きへ追いつく速さ(つないでいる時は × 2)
+@export var arm_follow := 16.0
+## ポーズ中、スティックをこれ以上倒すと腕を伸ばす
+@export_range(0.1, 0.95) var arm_deadzone := 0.5
+## スナップ数(0 = 無段階、8 = 8 方向)
+@export_range(0, 16) var arm_snap_directions := 0
+## L3/R3 で挙げた時の仰角(度)。スティックを倒していなければ真上
+@export_range(0.0, 90.0) var raise_angle_deg := 60.0
+## 下ろした向き(左腕。右腕は x を反転)。x = 画面の右、y = 手前、z = 上
+@export var rest_arm_direction := Vector3(-0.35, 0.15, -1.0)
+## 肩の位置(足元から、画面上。x は右肩の位置、左肩は反転)
+@export var shoulder_offset := Vector2(5, -10)
+
+@export_group("腕の描き方")
+## 手前・奥への腕を縦に縮める割合(3/4 ビューの奥行き)
+@export var depth_squash := 0.4
+## 腕を描く長さの倍率(小さな体でも腕が読めるよう、判定より長めに描く)
+@export var arm_draw_scale := 1.3
+## 上へ挙げた腕をさらに長く描く倍率(手が頭の上に出るように)
+@export var raise_draw_scale := 1.5
+## 下ろした腕を描く長さの倍率(手が足元より下に垂れないように)
+@export var rest_draw_scale := 0.75
+## 手前に伸ばした腕の手を大きくする割合
+@export var front_hand_grow := 0.5
+## 手の半径(px)
+@export var hand_radius := 2.5
+## 手前の腕ほど、手を体の正面の真ん中へ寄せる割合(下ろした腕と見分けるため)
+@export var front_hand_center := 0.9
 
 @export_group("入力")
 ## 入力の割り当て(空なら res://resources/settings/input_config.tres)
@@ -76,44 +107,42 @@ var is_local := true
 var height := 0.0
 var state := State.WALK
 var facing := Vector2.DOWN
-var arm_left := -1       ## 8方向の番号、-1 は下ろしている
-var arm_right := -1
-var reach_left := false
-var reach_right := false
 var input: Dictionary = PlayerInput.empty_state()
 ## 手つなぎ(Hands)が体の動きを決めている間は true
 var link_controlled := false
 ## 確認用の台本(Autopilot)が入力を上書きする時に使う。null なら通常の入力
 var input_override = null
-## 手つなぎ中に Hands が決める腕の向かう先(画面上のグローバル座標)。null なら通常
-var arm_target_left = null
-var arm_target_right = null
 ## 手でつかんでいる物 [左, 右](部品が設定する。つかんでいる手は手つなぎに使われない)
 var held_objects: Array = [null, null]
 ## 声の波の形を変える道具(ラッパなど)。{ dir = Vector2, spread = 角度, size_scale = 倍率 } か空
 var voice_modifier: Dictionary = {}
-## 腕の張り具合 0(緩い)〜1(張っている)
-var arm_tension_left := 0.0
-var arm_tension_right := 0.0
+
+# 腕の状態(1本ごと。[左, 右])
+var arm_dir: Array = [Vector3.ZERO, Vector3.ZERO]      ## 今の向き(単位ベクトル)
+var arm_reach := [-1.0, -1.0]                          ## 負なら元の長さ。つないでいる時だけ伸び縮みする
+var arm_tension := [0.0, 0.0]                          ## 張り(0〜1)。見た目と振動だけに使う
+var arm_grip := [false, false]                         ## 握っているか(見た目用)
+var arm_extended := [false, false]                     ## 手を伸ばしているか(手つなぎ・つかむ条件)
+var _link: Array = [null, null]                        ## つなぎ先 { point, height, tension, owner }
+var _net_arm_dir: Array = [Vector3.ZERO, Vector3.ZERO]
+var _net_link: Array = [null, null]                    ## 他の端末が計算している時に受け取ったつなぎ先(描く時だけ使う)
 
 var vz := 0.0            # 高さ方向の速さ(段/秒)
 var _air_grace := 0.0     # 崖を離れた直後、出発した段の壁を無視する時間
 var _air_start_height := 0.0
 var _prev_glide := false
+var _prev_pose := false
 var _reader := PlayerInput.new()
 var _remote_input: Dictionary = PlayerInput.empty_state()
 var _net_target_pos := Vector2.ZERO
 var _net_target_height := 0.0
 var _has_net_target := false
-var _sent_pose := []
 var _send_timer := 0.0
 var _flash := 0.0
 
 @onready var visual: Node2D = $Visual
 @onready var shadow: Node2D = $Shadow
 @onready var outline: Node2D = $Outline
-@onready var arm_l_node: PlayerArm = $Visual/ArmL
-@onready var arm_r_node: PlayerArm = $Visual/ArmR
 
 
 func _ready() -> void:
@@ -130,8 +159,9 @@ func _ready() -> void:
 	height = World.height_at(global_position)
 	_net_target_pos = global_position
 	_net_target_height = height
-	arm_l_node.position = Vector2(-shoulder_offset.x, shoulder_offset.y)
-	arm_r_node.position = shoulder_offset
+	for h in [Hand.LEFT, Hand.RIGHT]:
+		arm_dir[h] = _rest_dir(h)
+		_net_arm_dir[h] = arm_dir[h]
 	_update_colors()
 	var rcv := get_node_or_null("WaveReceiver") as WaveReceiver
 	if rcv:
@@ -156,11 +186,10 @@ func setup_input(kb: int, pad: int) -> void:
 
 
 func _update_colors() -> void:
-	if arm_l_node:
-		arm_l_node.hand_color = hand_color
-		arm_r_node.hand_color = hand_color
 	if visual:
-		visual.queue_redraw()
+		for n in visual.get_children():
+			if n is CanvasItem:
+				n.queue_redraw()
 	if outline:
 		outline.queue_redraw()
 
@@ -174,24 +203,29 @@ func _physics_process(delta: float) -> void:
 			_rpc_input.rpc_id(1, input)
 	else:
 		input = _remote_input
-	_update_arms_from_input()
 
 	if is_simulated_here():
 		if not link_controlled:
 			_simulate(delta)
+		_update_arms(delta)
 		_send_state(delta)
 	else:
 		_follow_net(delta)
+		_follow_net_arms(delta)
 
 
 func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 2.5)
-	visual.position = World.height_offset(height)
+	# 見た目は整数ピクセルにそろえる(当たり判定は動かさない)
+	var base := World.height_offset(height)
+	var snap := global_position.round() - global_position
+	visual.position = (base + snap).round()
 	outline.position = visual.position
-	shadow.position = World.height_offset(World.height_at(global_position))
-	_update_arm_nodes()
+	shadow.position = World.height_offset(World.height_at(global_position)) + snap
 	outline.visible = World.is_occluded(global_position, height, body_size, self)
-	visual.queue_redraw()
+	for n in visual.get_children():
+		if n is CanvasItem:
+			n.queue_redraw()
 	if outline.visible:
 		outline.queue_redraw()
 
@@ -243,6 +277,10 @@ func _walk(delta: float) -> void:
 	height = World.height_at(global_position)
 	if input.glide and not _prev_glide and not posing and not Hands.is_player_linked(self):
 		try_glide()
+
+
+func is_posing() -> bool:
+	return state == State.POSE
 
 
 ## 崖の縁なら滑空を始める。始めたら true
@@ -342,78 +380,235 @@ func is_airborne() -> bool:
 	return state == State.GLIDE or state == State.FLY
 
 
-# ---------------------------------------------------------------- 腕
+# ---------------------------------------------------------------- 体の向き
 
-func _update_arms_from_input() -> void:
-	if not is_local:
-		return
-	var dz := input_config.arm_deadzone
-	var l := -1
-	var r := -1
-	if input.pose:
-		l = PlayerInput.snap8(input.arm_l, dz)
-		r = PlayerInput.snap8(input.arm_r, dz)
-	var gl: bool = input.grab_l
-	var gr: bool = input.grab_r
-	var changed := l != arm_left or r != arm_right or gl != reach_left or gr != reach_right
-	arm_left = l
-	arm_right = r
-	reach_left = gl
-	reach_right = gr
-	if changed:
-		pose_changed.emit(input.pose, l, r)
-		if Net.is_online():
-			_rpc_pose.rpc(input.pose, l, r, gl, gr)
+func body_dir() -> int:
+	if absf(facing.x) > absf(facing.y):
+		return BodyDir.RIGHT if facing.x > 0.0 else BodyDir.LEFT
+	return BodyDir.UP if facing.y < 0.0 else BodyDir.DOWN
 
 
-## 手の位置(地面の座標。手つなぎの距離の判定に使う)
-func hand_ground_pos(side: int) -> Vector2:
-	var sx := -shoulder_offset.x if side == Side.LEFT else shoulder_offset.x
-	var dir := _arm_dir(side)
-	var arm_len := reach_length if (reach_left if side == Side.LEFT else reach_right) else arm_length
-	return global_position + Vector2(sx + dir.x * arm_len, dir.y * arm_len * 0.5)
+# ---------------------------------------------------------------- 腕:更新
+
+## 両腕の向き・長さを決める(体の動きを計算する端末で毎物理フレーム)。
+## 優先順位は「つないでいる > ポーズ中のスティック > 下ろす」
+func _update_arms(delta: float) -> void:
+	var posing := is_posing()
+	if posing != _prev_pose:
+		_prev_pose = posing
+		pose_changed.emit(posing)
+	for h in [Hand.LEFT, Hand.RIGHT]:
+		arm_grip[h] = is_gripping(h)
+		var lk = _link[h]
+		if lk != null:
+			arm_extended[h] = true
+			arm_grip[h] = true
+			arm_tension[h] = lk.tension
+			var to: Vector2 = lk.point - get_shoulder_ground_position(h)
+			arm_dir[h] = _aim(arm_dir[h], Vector3(to.x, to.y, 0.0), arm_follow * 2.0, delta)
+			arm_reach[h] = clampf(to.length(), arm_length * 0.5, arm_length * 2.0)
+			continue
+		arm_reach[h] = -1.0
+		arm_tension[h] = 0.0
+		var target := _pose_dir(h) if posing else Vector3.ZERO
+		arm_extended[h] = target != Vector3.ZERO
+		if target == Vector3.ZERO:
+			target = _rest_dir(h)
+		arm_dir[h] = _aim(arm_dir[h], target, arm_follow, delta)
 
 
-## 手の位置(画面上のグローバル座標)
-func hand_screen_pos(side: int) -> Vector2:
-	var node := arm_l_node if side == Side.LEFT else arm_r_node
-	return node.global_position + Vector2.RIGHT.rotated(node.global_rotation) * node.length
+## ポーズの向き(スティックと挙げるボタンから)。伸ばさない時はゼロ
+func _pose_dir(h: int) -> Vector3:
+	var stick: Vector2 = input.arm_l if h == Hand.LEFT else input.arm_r
+	var pointing := stick.length() >= arm_deadzone
+	var raised: bool = input.raise_l if h == Hand.LEFT else input.raise_r
+	if raised and not pointing:
+		return Vector3(0, 0, 1)
+	if not pointing:
+		return Vector3.ZERO
+	if arm_snap_directions > 0:
+		var step := TAU / arm_snap_directions
+		stick = Vector2.from_angle(roundf(stick.angle() / step) * step)
+	var hd := stick.normalized()
+	if raised:
+		var e := deg_to_rad(raise_angle_deg)
+		return Vector3(hd.x * cos(e), hd.y * cos(e), sin(e))
+	return Vector3(hd.x, hd.y, 0.0)
 
 
-func shoulder_screen_pos(side: int) -> Vector2:
-	var node := arm_l_node if side == Side.LEFT else arm_r_node
-	return node.global_position
+## 下ろした向き(左腕の設定。右腕は x を反転)
+func _rest_dir(h: int) -> Vector3:
+	var d := rest_arm_direction.normalized()
+	if h == Hand.RIGHT:
+		d.x = -d.x
+	return d
 
 
-func _arm_dir(side: int) -> Vector2:
-	var idx := arm_left if side == Side.LEFT else arm_right
-	var reaching := reach_left if side == Side.LEFT else reach_right
-	if idx >= 0:
-		return PlayerInput.dir8(idx)
-	if reaching:
-		var partner := World.get_partner(self)
-		if partner and partner.global_position.distance_to(global_position) < 60.0:
-			return (partner.global_position - global_position).normalized()
-		return Vector2(-0.94, 0.34) if side == Side.LEFT else Vector2(0.94, 0.34)
-	return Vector2(-0.34, 0.94) if side == Side.LEFT else Vector2(0.34, 0.94)
+## 今の向きから目標へ、球面の上で滑らかに回す(指数で近づくので、フレームの速さに関係なく同じ感触)。
+## 真逆への切り替え(右から左など)は水平に回して体の前を通す
+static func _aim(current: Vector3, target: Vector3, follow: float, delta: float) -> Vector3:
+	if target == Vector3.ZERO:
+		return current
+	target = target.normalized()
+	if current == Vector3.ZERO:
+		return target
+	var angle := current.angle_to(target)
+	if angle < 0.001:
+		return target
+	var axis := current.cross(target)
+	if axis.length() < 0.0001:
+		axis = Vector3(0, 0, 1) if absf(current.z) < 0.9 else Vector3(1, 0, 0)
+	return current.rotated(axis.normalized(), angle * (1.0 - exp(-follow * delta))).normalized()
 
 
-func _update_arm_nodes() -> void:
-	for side in [Side.LEFT, Side.RIGHT]:
-		var node: PlayerArm = arm_l_node if side == Side.LEFT else arm_r_node
-		var target = arm_target_left if side == Side.LEFT else arm_target_right
-		if target != null:
-			var v: Vector2 = target - node.global_position
-			node.rotation = v.angle()
-			node.length = maxf(v.length(), 2.0)
-			node.tension = arm_tension_left if side == Side.LEFT else arm_tension_right
-		else:
-			var dir := _arm_dir(side)
-			var reaching := reach_left if side == Side.LEFT else reach_right
-			node.rotation = dir.angle()
-			node.length = reach_length if reaching else arm_length
-			node.tension = 1.0
-		node.queue_redraw()
+## 体の動きを計算しない端末:受け取った向きへ滑らかに追う
+func _follow_net_arms(delta: float) -> void:
+	for h in [Hand.LEFT, Hand.RIGHT]:
+		arm_dir[h] = _aim(arm_dir[h], _net_arm_dir[h], arm_follow * 2.0, delta)
+
+
+# ---------------------------------------------------------------- 腕:他の仕組みから使う口
+
+## 伸ばしているか(手つなぎ・つかむ条件)
+func is_arm_extended(h: int) -> bool:
+	return arm_extended[h]
+
+
+## 握っているか(入力を直接見る)
+func is_gripping(h: int) -> bool:
+	return bool(input.grab_l if h == Hand.LEFT else input.grab_r)
+
+
+## 腕の長さ(px、判定用)
+func get_arm_length_px() -> float:
+	return arm_length
+
+
+## 肩の位置(足元から、画面上)。体の向きで左右が入れ替わる・中央へ寄る
+func shoulder_local(h: int) -> Vector2:
+	var side := -1.0 if h == Hand.LEFT else 1.0
+	match body_dir():
+		BodyDir.UP:
+			side = -side
+		BodyDir.LEFT, BodyDir.RIGHT:
+			side *= 0.3
+	return Vector2(side * shoulder_offset.x, shoulder_offset.y)
+
+
+## 肩の地面の位置
+func get_shoulder_ground_position(h: int) -> Vector2:
+	return global_position + Vector2(shoulder_local(h).x, 0.0)
+
+
+## 手の地面の位置(判定用。腕の上下は無視し、描く倍率はかけない)
+func get_hand_ground_position(h: int) -> Vector2:
+	var d: Vector3 = arm_dir[h]
+	return get_shoulder_ground_position(h) + Vector2(d.x, d.y) * _reach_px(h)
+
+
+func _reach_px(h: int) -> float:
+	return arm_reach[h] if arm_reach[h] > 0.0 else arm_length
+
+
+## つなぎ先(手が向かう地面の点)を設定する。null で外す。
+## owner_key は設定した仕組みの名前。外す時は自分が設定した物だけを外す(他の物を握る手の行き先を消さないため)
+## link_height はつなぎ先の高さ(段)。省略すると自分の高さ
+func set_link_point(h: int, point, tension: float = 0.0, owner_key: String = "", link_height: float = NAN) -> void:
+	var cur = _link[h]
+	if point == null:
+		if cur != null and (owner_key == "" or cur.owner == owner_key):
+			_link[h] = null
+	else:
+		_link[h] = { point = point, tension = tension, owner = owner_key, height = link_height }
+	# 体の動きを他の端末が計算している時は、その端末へ伝える
+	if Net.is_online() and multiplayer.is_server() and not is_simulated_here() and owner_peer != Net.my_id():
+		_rpc_link_point.rpc_id(owner_peer, h, point, tension, owner_key, link_height)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _rpc_link_point(h: int, point, tension: float, owner_key: String, link_height: float) -> void:
+	if point == null:
+		var cur = _link[h]
+		if cur != null and (owner_key == "" or cur.owner == owner_key):
+			_link[h] = null
+	else:
+		_link[h] = { point = point, tension = tension, owner = owner_key, height = link_height }
+
+
+## つなぎ先があるか
+func is_linked(h: int) -> bool:
+	return _link[h] != null
+
+
+## そのつなぎ先を設定した仕組みの名前(つないでいなければ空)
+func link_owner(h: int) -> String:
+	return _link[h].owner if _link[h] != null else ""
+
+
+# ---------------------------------------------------------------- 腕:描く
+
+## 腕の空間の向きを画面へ写す(正確な投影ではなく、合図の読み分けを優先した写し方)
+func _arm_to_screen(d: Vector3) -> Vector2:
+	var up := maxf(d.z, 0.0) * raise_draw_scale + minf(d.z, 0.0)
+	return Vector2(d.x, d.y * depth_squash - up)
+
+
+## 描く時に使うつなぎ先(この端末で計算していない時は、受け取った物)
+func _draw_link(h: int):
+	if _link[h] != null:
+		return _link[h]
+	return _net_link[h] if not is_simulated_here() else null
+
+
+## 手の位置(見た目の原点=足元からの画面上の位置)
+func hand_local(h: int) -> Vector2:
+	var sh := shoulder_local(h)
+	var lk = _draw_link(h)
+	if lk != null:
+		# つないでいる手は、つなぎ先の点にちょうど重ねる(二人の手が行き違って見えないように)
+		var lh: float = height if is_nan(float(lk.height)) else float(lk.height)
+		var p: Vector2 = lk.point - global_position + World.height_offset(lh - height) + Vector2(0, sh.y)
+		return p.round()
+	var d: Vector3 = arm_dir[h]
+	var draw_k := lerpf(arm_draw_scale, rest_draw_scale, clampf(-d.z, 0.0, 1.0))
+	var hand := sh + _arm_to_screen(d) * _reach_px(h) * draw_k
+	hand.x -= sh.x * maxf(d.y, 0.0) * front_hand_center
+	return hand.round()
+
+
+## 体の後ろに描く腕か(奥へ向いていて、挙げていない)
+func arm_behind_body(h: int) -> bool:
+	var d: Vector3 = arm_dir[h]
+	return d.y < -0.2 and d.z < 0.3
+
+
+## 腕を描く(ArmsBack / ArmsFront の層から呼ばれる)。front = 体の前の層か
+func draw_arms(canvas: CanvasItem, front: bool) -> void:
+	for h in [Hand.LEFT, Hand.RIGHT]:
+		if arm_behind_body(h) == front:
+			continue
+		var sh := shoulder_local(h)
+		var hand := hand_local(h)
+		var d: Vector3 = arm_dir[h]
+		var line_col := body_color.lerp(Color.WHITE, float(arm_tension[h]) * 0.45)
+		canvas.draw_line(sh, hand, body_color.darkened(0.55), 3.0)
+		canvas.draw_line(sh, hand, line_col, 1.0)
+		var r := hand_radius * (1.0 + front_hand_grow * maxf(d.y, 0.0))
+		var col := hand_color
+		if arm_grip[h]:
+			r *= 0.75
+			col = col.darkened(0.15)
+		canvas.draw_circle(hand, r + 1.0, col.darkened(0.6))
+		canvas.draw_circle(hand, r, col)
+
+
+## 手の画面上の位置(グローバル)
+func hand_screen_pos(h: int) -> Vector2:
+	return visual.global_position + hand_local(h)
+
+
+func shoulder_screen_pos(h: int) -> Vector2:
+	return visual.global_position + shoulder_local(h)
 
 
 # ---------------------------------------------------------------- 波が届いた時
@@ -452,22 +647,6 @@ func _rpc_input(state_in: Dictionary) -> void:
 	_remote_input = state_in
 
 
-@rpc("any_peer", "call_remote", "reliable")
-func _rpc_pose(posing: bool, l: int, r: int, gl: bool, gr: bool) -> void:
-	if multiplayer.get_remote_sender_id() != owner_peer:
-		return
-	var changed := l != arm_left or r != arm_right
-	arm_left = l
-	arm_right = r
-	reach_left = gl
-	reach_right = gr
-	_remote_input.pose = posing
-	_remote_input.grab_l = gl
-	_remote_input.grab_r = gr
-	if changed:
-		pose_changed.emit(posing, l, r)
-
-
 func _send_state(delta: float) -> void:
 	if not Net.is_online():
 		return
@@ -480,8 +659,20 @@ func _send_state(delta: float) -> void:
 		_rpc_state.rpc_id(id, pack_state())
 
 
+## [位置, 高さ, 状態, 向き, 速さ, 上下の速さ, 手つなぎで動かされているか,
+##  左の向き, 右の向き, 左の長さ, 右の長さ, 左の張り, 右の張り, 左の握り, 右の握り, 左の伸ばし, 右の伸ばし,
+##  左のつなぎ先, 右のつなぎ先(なければ空の配列。あれば [点, 高さ])]
 func pack_state() -> Array:
-	return [global_position, height, state, facing, velocity, vz, link_controlled]
+	return [global_position, height, state, facing, velocity, vz, link_controlled,
+		arm_dir[0], arm_dir[1], arm_reach[0], arm_reach[1], arm_tension[0], arm_tension[1],
+		arm_grip[0], arm_grip[1], arm_extended[0], arm_extended[1], _pack_link(0), _pack_link(1)]
+
+
+func _pack_link(h: int) -> Array:
+	var lk = _link[h]
+	if lk == null:
+		return []
+	return [lk.point, height if is_nan(float(lk.height)) else float(lk.height)]
 
 
 func apply_state(a: Array, snap: bool) -> void:
@@ -493,9 +684,26 @@ func apply_state(a: Array, snap: bool) -> void:
 	vz = a[5]
 	if s != state:
 		_set_state(s)
+		var posing := s == State.POSE
+		if posing != _prev_pose:
+			_prev_pose = posing
+			pose_changed.emit(posing)
+	if a.size() >= 17:
+		for h in [0, 1]:
+			_net_arm_dir[h] = a[7 + h]
+			arm_reach[h] = a[9 + h]
+			arm_tension[h] = a[11 + h]
+			arm_grip[h] = a[13 + h]
+			arm_extended[h] = a[15 + h]
+	if a.size() >= 19:
+		for h in [0, 1]:
+			var pl: Array = a[17 + h]
+			_net_link[h] = null if pl.is_empty() else { point = pl[0], height = pl[1], tension = arm_tension[h], owner = "" }
 	if snap:
 		global_position = _net_target_pos
 		height = _net_target_height
+		for h in [0, 1]:
+			arm_dir[h] = _net_arm_dir[h]
 	_has_net_target = true
 
 

@@ -6,6 +6,7 @@ extends Control
 @export var scenes: PackedStringArray = PackedStringArray([
 	"res://scenes/catalog.tscn",
 	"res://scenes/tests/test_terrain.tscn",
+	"res://scenes/tests/test_arms.tscn",
 	"res://scenes/tests/test_hands.tscn",
 	"res://scenes/tests/test_sound_wave.tscn",
 	"res://scenes/tests/test_voice.tscn",

@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/parts/player/player.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/parts/player/player_visual.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/parts/player/player_arm.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/parts/player/arm_layer.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/parts/sound_wave/wave_receiver.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/parts/player/body_art.gd" id="5"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 5.0
@@ -19,14 +20,15 @@ script = ExtResource("2")
 mode = 1
 
 [node name="Visual" type="Node2D" parent="."]
-script = ExtResource("2")
 
-[node name="ArmL" type="Node2D" parent="Visual"]
-position = Vector2(-5, -11)
+[node name="ArmsBack" type="Node2D" parent="Visual"]
 script = ExtResource("3")
+front = false
 
-[node name="ArmR" type="Node2D" parent="Visual"]
-position = Vector2(5, -11)
+[node name="Body" type="Node2D" parent="Visual"]
+script = ExtResource("5")
+
+[node name="ArmsFront" type="Node2D" parent="Visual"]
 script = ExtResource("3")
 
 [node name="Outline" type="Node2D" parent="."]

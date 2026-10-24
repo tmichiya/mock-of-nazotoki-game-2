@@ -37,23 +37,23 @@ func _steps() -> Array:
 		{ t = 1.5, call = "staggered", log = "staggered: expect stone NOT lit" },
 		{ t = 1.5, call = "both", log = "together: expect stone lit" },
 		{ t = 0.1, call = "phone_ends" },
-		{ t = 0.4, p1 = { grab_r = true }, p2 = { grab_l = true } },
+		{ t = 0.4, p1 = { pose = true, arm_r = Vector2(1, 0), grab_r = true }, p2 = { pose = true, arm_l = Vector2(-1, 0), grab_l = true } },
 		{ t = 2.2, p1 = { grab_r = true, move = Vector2.LEFT }, p2 = { grab_l = true, move = Vector2.RIGHT } },
 		{ t = 0.1, call = "report", log = "phone stretched: expect connected", p1 = { grab_r = true }, p2 = { grab_l = true } },
 		{ t = 0.3 },
 		{ t = 0.1, call = "trumpet" },
-		{ t = 0.4, p1 = { grab_l = true } },
-		{ t = 0.1, call = "report", log = "holding trumpet: expect picked_up and voice_modifier set", p1 = { grab_l = true } },
+		{ t = 0.4, p1 = { pose = true, arm_r = Vector2(1, 0), grab_r = true } },
+		{ t = 0.1, call = "report", log = "holding trumpet: expect picked_up and voice_modifier set", p1 = { grab_r = true } },
 	]
 
 
 func phone_ends() -> void:
-	place(1, $Phone.global_position + Vector2(-18, 0))
-	place(2, $Phone.global_position + Vector2(18, 0))
+	place(1, $Phone.global_position + Vector2(-36, 0))
+	place(2, $Phone.global_position + Vector2(36, 0))
 
 
 func trumpet() -> void:
-	place(1, $Trumpet.global_position + Vector2(-4, 0))
+	place(1, $Trumpet.global_position + Vector2(-18, 0))
 
 
 func report() -> void:

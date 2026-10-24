@@ -6,7 +6,7 @@ extends Node2D
 ## 画面に出す説明
 @export_multiline var help_text := ""
 
-const COMMON_HELP := "移動 WASD/左スティック  ポーズ Shift/LT  腕 移動キー+IJKL/両スティック  手 Q,E/LB,RB  滑空 Space/A\n2人目: 矢印  ポーズ /  腕 矢印+テンキー8456  手 , .  滑空 Enter    F1 段番号  F2 波の範囲"
+const COMMON_HELP := "移動 WASD/左スティック  ポーズ Shift/LT・RT  腕 移動キー+IJKL/両スティック  挙げる Z,C/L3,R3  握る Q,E/LB,RB  滑空 Space/A\n2人目: 矢印  ポーズ /  腕 矢印+テンキー8456  挙げる テンキー7,9  握る , .  滑空 Enter    F1 段番号  F2 波の範囲"
 
 var _label: Label
 

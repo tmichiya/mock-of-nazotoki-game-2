@@ -1,7 +1,13 @@
 extends Node
 ## Hands(自動読み込み)
-## 二人の手つなぎ。つながる・離れる、片手/両手、回転投げ、両手の反動、段またぎ(宙づり・引き上げ)。
+## 二人の手つなぎ。つながる・離れる、片手/両手、引っ張り合い、回転投げ、両手の反動、段またぎ(宙づり・引き上げ)。
 ## つないでいる間はホストの端末で二人分を計算し、もう一方は結果に従う(ガタつき防止)。
+##
+## 腕の側とは「つなぎ先の点」だけでやりとりする(Player.set_link_point)。
+## ・つながる条件:二人とも、その腕を伸ばして(ポーズ中にスティック)握っていて、手の地面の位置どうしが link_distance 以内
+## ・外れる条件:どちらかが握るのをやめる
+## ・つなぎ先:二人の肩の地面の位置の中点。毎フレーム、自分がつないだ手だけつなぎ先を設定・解除する
+##   (全部の手を消すと、レバーや棒を握っている手の行き先まで消えてしまうため)
 ##
 ## 他の部品からの問い合わせ:
 ##   Hands.is_linked() / Hands.get_link_type() / Hands.is_player_linked(player)
@@ -24,6 +30,8 @@ var _a: Player
 var _b: Player
 var _pairs: Array = []        # Vector2i(_a の手, _b の手)
 var _two_drop_time := -100.0
+
+const LINK_KEY := "hands"      # つなぎ先を設定した仕組みの名前
 
 var _spin := {}               # 回転中の情報
 var _cross := {}              # 段またぎ中の情報
@@ -81,8 +89,7 @@ func hand_in_link(p: Node, side: int) -> bool:
 
 ## その手が「空いていて伸ばしている」か(物をつかめるか)
 func hand_is_free(p: Player, side: int) -> bool:
-	var reaching := p.reach_left if side == Player.Side.LEFT else p.reach_right
-	if not reaching or hand_in_link(p, side):
+	if not (p.is_arm_extended(side) and p.is_gripping(side)) or hand_in_link(p, side):
 		return false
 	return p.held_objects[side] == null
 
@@ -146,49 +153,65 @@ func _physics_process(delta: float) -> void:
 	if not Net.is_host():
 		return
 	_update_pairs()
-	if not is_linked():
-		return
-	if not _cross.is_empty():
-		_cross_step(delta)
-	elif get_link_type() == LinkType.ONE_HAND:
-		_spin_step(delta)
-	else:
-		_end_spin()
-	if _cross.is_empty() and _spin.is_empty():
-		_check_step_off()
-		_distance_constraint()
-	_rumble_step(delta)
+	if is_linked():
+		if not _cross.is_empty():
+			_cross_step(delta)
+		elif get_link_type() == LinkType.ONE_HAND:
+			_spin_step(delta)
+		else:
+			_end_spin()
+		if _cross.is_empty() and _spin.is_empty():
+			_check_step_off()
+			_pull(delta)
+		_rumble_step(delta)
+	_apply_link_points()
 
 
-func _process(_delta: float) -> void:
-	for p in World.get_players():
-		p.arm_target_left = null
-		p.arm_target_right = null
-	if not is_linked() or _a == null or _b == null:
-		return
-	var tension := _tension()
+## 自分がつないだ手だけ、つなぎ先(肩の中点)を設定する。つないでいない手は、自分が設定した物だけ外す
+func _apply_link_points() -> void:
+	var tension := _tension() if is_linked() else 0.0
+	var linked_hands := {}
 	for pair in _pairs:
-		var sa: int = pair.x
-		var sb: int = pair.y
-		var meet: Vector2 = (_a.shoulder_screen_pos(sa) + _b.shoulder_screen_pos(sb)) * 0.5
-		_set_target(_a, sa, meet, tension)
-		_set_target(_b, sb, meet, tension)
+		var mid: Vector2 = (_a.get_shoulder_ground_position(pair.x) + _b.get_shoulder_ground_position(pair.y)) * 0.5
+		var mid_h := (_a.height + _b.height) * 0.5
+		_a.set_link_point(pair.x, mid, tension, LINK_KEY, mid_h)
+		_b.set_link_point(pair.y, mid, tension, LINK_KEY, mid_h)
+		linked_hands[[_a, pair.x]] = true
+		linked_hands[[_b, pair.y]] = true
+	for p: Player in [_a, _b]:
+		for h in [Player.Hand.LEFT, Player.Hand.RIGHT]:
+			if not linked_hands.has([p, h]) and p.link_owner(h) == LINK_KEY:
+				p.set_link_point(h, null, 0.0, LINK_KEY)
 
 
-func _set_target(p: Player, side: int, meet: Vector2, tension: float) -> void:
-	if side == Player.Side.LEFT:
-		p.arm_target_left = meet
-		p.arm_tension_left = tension
-	else:
-		p.arm_target_right = meet
-		p.arm_tension_right = tension
+## 二人の腕の長さの和(px)
+func arm_sum() -> float:
+	if _a == null or _b == null:
+		return 26.0
+	return _a.arm_length + _b.arm_length
 
 
+## 腕が伸びきった時の長さ(px)。宙づり・回転の半径に使う
+func rope_length() -> float:
+	return arm_sum() * settings.max_stretch
+
+
+## つないでいる肩どうしの距離(段の高さも含めた立体の距離)
+func _shoulder_dist3d() -> float:
+	if _pairs.is_empty():
+		return _dist3d(_a, _b)
+	var pair: Vector2i = _pairs[0]
+	var d := _a.get_shoulder_ground_position(pair.x).distance_to(_b.get_shoulder_ground_position(pair.y))
+	var dh := (_a.height - _b.height) * World.config.level_world_px
+	return sqrt(d * d + dh * dh)
+
+
+## 張り:(距離 − 腕の和)/(伸びきり − 腕の和)を 0〜1 にしたもの
 func _tension() -> float:
 	if not _spin.is_empty() or (not _cross.is_empty() and _cross.mode != "stand"):
 		return 1.0
-	var lo := settings.link_distance * 0.5
-	return clampf((_dist3d(_a, _b) - lo) / maxf(settings.max_distance - lo, 1.0), 0.0, 1.0)
+	var sum := arm_sum()
+	return clampf((_shoulder_dist3d() - sum) / maxf(sum * settings.max_stretch - sum, 1.0), 0.0, 1.0)
 
 
 func _dist3d(p: Player, q: Player) -> float:
@@ -196,10 +219,14 @@ func _dist3d(p: Player, q: Player) -> float:
 	return sqrt(p.global_position.distance_squared_to(q.global_position) + dh * dh)
 
 
-func _reach(p: Player, side: int) -> bool:
-	if p.held_objects[side] != null:
-		return false
-	return p.reach_left if side == Player.Side.LEFT else p.reach_right
+## つないだままでいられるか(握っていて、物をつかんでいない)
+func _keeps(p: Player, side: int) -> bool:
+	return p.held_objects[side] == null and p.is_gripping(side)
+
+
+## 新しくつなげるか(伸ばして握っていて、物をつかんでいない)
+func _offers(p: Player, side: int) -> bool:
+	return _keeps(p, side) and p.is_arm_extended(side)
 
 
 # ---------------------------------------------------------------- つながる・離れる
@@ -207,16 +234,15 @@ func _reach(p: Player, side: int) -> bool:
 func _update_pairs() -> void:
 	var kept: Array = []
 	for pair in _pairs:
-		if _reach(_a, pair.x) and _reach(_b, pair.y):
+		if _keeps(_a, pair.x) and _keeps(_b, pair.y):
 			kept.append(pair)
 	var can_form := not _a.is_airborne() and not _b.is_airborne() \
-		and absf(_a.height - _b.height) < settings.same_level_tolerance \
-		and _a.global_position.distance_to(_b.global_position) <= settings.link_distance
+		and absf(_a.height - _b.height) < settings.same_level_tolerance
 	if can_form and kept.size() < 2:
 		var cands := []
-		for sa in [Player.Side.LEFT, Player.Side.RIGHT]:
-			for sb in [Player.Side.LEFT, Player.Side.RIGHT]:
-				if not (_reach(_a, sa) and _reach(_b, sb)):
+		for sa in [Player.Hand.LEFT, Player.Hand.RIGHT]:
+			for sb in [Player.Hand.LEFT, Player.Hand.RIGHT]:
+				if not (_offers(_a, sa) and _offers(_b, sb)):
 					continue
 				var used := false
 				for k in kept:
@@ -224,8 +250,9 @@ func _update_pairs() -> void:
 						used = true
 				if used:
 					continue
-				var d: float = _a.hand_ground_pos(sa).distance_to(_b.hand_ground_pos(sb))
-				cands.append([d, Vector2i(sa, sb)])
+				var d: float = _a.get_hand_ground_position(sa).distance_to(_b.get_hand_ground_position(sb))
+				if d <= settings.link_distance:
+					cands.append([d, Vector2i(sa, sb)])
 		cands.sort_custom(func(p, q): return p[0] < q[0])
 		for c in cands:
 			var v: Vector2i = c[1]
@@ -321,25 +348,38 @@ func _on_release(recoil: bool) -> void:
 				p.rpc_handoff_state.rpc_id(p.owner_peer, p.pack_state())
 
 
-# ---------------------------------------------------------------- 距離を保つ
+# ---------------------------------------------------------------- 引っ張り合い
 
-func _distance_constraint() -> void:
-	var d := _a.global_position - _b.global_position
-	var dh := (_a.height - _b.height) * World.config.level_world_px
-	var horiz_max := sqrt(maxf(settings.max_distance * settings.max_distance - dh * dh, 0.0))
-	var dl := d.length()
-	if dl <= horiz_max or dl < 0.001:
+## 肩どうしの距離が二人の腕の長さの和を超えると引き合い、max_stretch 倍で伸びきってそれ以上は離れない。
+## ポーズ中の側は踏ん張る(動かされる割合 pose_anchor_share)
+func _pull(delta: float) -> void:
+	if _pairs.is_empty():
 		return
-	var excess := dl - horiz_max
+	var pair: Vector2i = _pairs[0]
+	var sa := _a.get_shoulder_ground_position(pair.x)
+	var sb := _b.get_shoulder_ground_position(pair.y)
+	var d := sb - sa
+	var dl := d.length()
+	if dl < 0.001:
+		return
+	var dh := (_a.height - _b.height) * World.config.level_world_px
+	var sum := arm_sum()
+	var free := sqrt(maxf(sum * sum - dh * dh, 0.0))
+	var hard := sqrt(maxf(pow(sum * settings.max_stretch, 2) - dh * dh, 0.0))
+	if dl <= free:
+		return
+	var share_a := 0.5
+	if _a.is_posing() and not _b.is_posing():
+		share_a = settings.pose_anchor_share
+	elif _b.is_posing() and not _a.is_posing():
+		share_a = 1.0 - settings.pose_anchor_share
 	var dir := d / dl
-	# 動こうとしている人が、止まっている人を引っ張る
-	var ma: float = _a.input.move.length()
-	var mb: float = _b.input.move.length()
-	var wa := 0.5
-	if ma + mb > 0.05:
-		wa = mb / (ma + mb)
-	_a.move_and_collide(-dir * excess * wa)
-	_b.move_and_collide(dir * excess * (1.0 - wa))
+	# 引き合い(強さ pull_strength)。伸びきり(hard)より離れない
+	var amount := minf((dl - free) * settings.pull_strength * delta, dl - free)
+	if dl - amount > hard:
+		amount = dl - hard
+	_a.move_and_collide(dir * amount * share_a)
+	_b.move_and_collide(-dir * amount * (1.0 - share_a))
 	for p: Player in [_a, _b]:
 		if not p.is_airborne() and not p.link_controlled:
 			p.height = World.height_at(p.global_position)
@@ -355,15 +395,19 @@ func _spin_step(delta: float) -> void:
 			return
 		var axis: Player = _a if idle_a else _b
 		var mover: Player = _b if idle_a else _a
-		var rel := mover.global_position - axis.global_position
-		if rel.length() < settings.max_distance * 0.75:
+		# 物(レバーなど)を握っている時は回らない。腕が張っている時だけ回り始める
+		for p: Player in [_a, _b]:
+			if p.held_objects[0] != null or p.held_objects[1] != null:
+				return
+		if _tension() < settings.spin_start_tension:
 			return
+		var rel := mover.global_position - axis.global_position
 		var t := rel.normalized().orthogonal()
 		var in_t: float = mover.input.move.dot(t)
 		if absf(in_t) < 0.5:
 			return
 		_spin = { axis = axis, mover = mover, angle = rel.angle(), omega = signf(in_t) * 1.0,
-			radius = clampf(rel.length(), settings.link_distance, settings.max_distance * 0.95) }
+			radius = clampf(rel.length(), arm_sum() * 0.5, rope_length()) }
 		mover.link_controlled = true
 	var ax: Player = _spin.axis
 	var mv: Player = _spin.mover
@@ -461,7 +505,7 @@ func _cross_step(delta: float) -> void:
 	var axis: int = _cross.axis
 	var edge: float = _cross.edge
 	var lw := World.config.level_world_px
-	var L := settings.max_distance
+	var L := rope_length()
 	var r0 := _r0(lower)
 	# 上の人:縁から離れようとすると「引き上げ」
 	var dist_up := (edge - upper.global_position[axis]) * n[axis]
@@ -535,7 +579,7 @@ func _cross_step(delta: float) -> void:
 			elif absf(lower.height - upper.height) < 0.3:
 				_cross = {}
 			else:
-				_distance_constraint()
+				_pull(delta)
 
 
 func _follow_lateral(pos: Vector2, pivot: Vector2, axis: int, delta: float) -> Vector2:
@@ -558,16 +602,14 @@ func _rumble_step(delta: float) -> void:
 	if _rumble_timer > 0.0:
 		return
 	_rumble_timer = 0.1
-	var holder: Player = null
-	var k := 0.0
+	var k := settings.vibration_strength
 	if not _cross.is_empty() and _cross.mode in ["hang", "climb", "drop"]:
-		holder = _cross.upper
-		k = 1.0
+		_cross.upper.rumble(k * 0.6, k, 0.12)
 	elif not _spin.is_empty():
-		holder = _spin.axis
-		k = absf(_spin.omega) / settings.spin_max_speed
-	elif _tension() > 0.95:
-		k = 0.4
-		holder = _a if _a.input.move.length() < _b.input.move.length() else _b
-	if holder and k > 0.05:
-		holder.rumble(settings.rumble_weak * k, settings.rumble_strong * k, 0.12)
+		var f := absf(_spin.omega) / settings.spin_max_speed
+		_spin.axis.rumble(k * f * 0.6, k * f, 0.12)
+	else:
+		var t := _tension()
+		if t >= settings.vibration_threshold:
+			for p: Player in [_a, _b]:
+				p.rumble(k * t * 0.6, k * t, 0.12)

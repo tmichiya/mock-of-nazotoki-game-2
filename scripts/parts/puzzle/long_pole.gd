@@ -112,6 +112,10 @@ func _physics_process(delta: float) -> void:
 	var new_a := angle + da
 	_try_move(new_c, new_a, delta)
 	_pull_players_to_ends()
+	var e2 := ends()
+	for i in [0, 1]:
+		if _holders[i]:
+			hold_hand(_holders[i][0], _holders[i][1], e2[i])
 	_update_height()
 	_update_link()
 	queue_redraw()
@@ -132,6 +136,7 @@ func _update_holders() -> void:
 			if not is_instance_valid(p) or not is_reaching(p, side):
 				if is_instance_valid(p):
 					p.held_objects[side] = null
+					release_hand(p, side)
 				_holders[i] = null
 				released.emit(i)
 		if _holders[i] == null:
