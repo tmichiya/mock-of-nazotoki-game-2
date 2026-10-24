@@ -196,7 +196,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 | `SwitchGroup` | どこでも。`switches` にスイッチを登録 | `pattern`(空=全部同時、ありなら組み合わせ)、`window`(少しずれてもよい時間)、間違えたら戻す | `solved` `wrong` `count_changed(n)` `cleared` | `reset_switches()` |
 | `SymbolSign` | 置く。記号は `symbols` に番号で | 記号セット(`resources/symbols/symbols_default.tres`。`textures` に絵を足すと記号が増える)、大きさ、板の高さ・色 | `symbols_changed` | `set_symbol(i)` `next_symbol()` `set_symbols(arr)` |
 | `OnlyVisibleTo` | 見せたい物の子に置く | 誰に見せるか(両方/1人目/2人目/手をつないだ時だけ/誰にも)、見えない人の当たり判定を消す | — | — |
-| `IslandChangeReactor` | 置き、変化させたい物を子にする(子が無ければ仮の箱) | 段階、EXACT/AT_LEAST、動作(現れる/消える/落ちる/移動)、移動量、落ちる段数、時間 | `changed` `appeared` `disappeared` `fell` `moved` | `trigger()` |
+| `IslandChangeReactor` | 置き、変化させたい物を子にする(子が無ければ仮の箱) | 段階、EXACT/AT_LEAST、動作(現れる/消える/落ちる/移動。落ちるは下へ落ちながら薄くなって消える。落ちた先に残したい時は移動を使う)、移動量、落ちる段数、時間 | `changed` `appeared` `disappeared` `fell` `moved` | `trigger()` |
 
 ### I. レバー `Lever`
 - **置き方**: 置く。ポーズ中に腕をレバーへ向けて握り(LB/RB)、ポーズを解いて(握ったまま)レバーから離れる方向へスティックを倒すと引ける

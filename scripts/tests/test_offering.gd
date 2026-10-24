@@ -55,8 +55,8 @@ func pick_hidden() -> void:
 
 
 func report() -> void:
-	print("[AUTO] shards=%s offerings=%s appear1.visible=%s disappear1.visible=%s move1=(%.0f,%.0f) appear2.visible=%s" % [
-		World.get_shared("shards"), World.get_shared("offerings"), $Appear1.visible, $Disappear1.visible,
+	print("[AUTO] shards=%s offerings=%s appear1.visible=%s disappear1.visible=%s fall1.visible=%s move1=(%.0f,%.0f) appear2.visible=%s" % [
+		World.get_shared("shards"), World.get_shared("offerings"), $Appear1.visible, $Disappear1.visible, $Fall1.visible,
 		$Move1.position.x, $Move1.position.y, $Appear2.visible])
 
 

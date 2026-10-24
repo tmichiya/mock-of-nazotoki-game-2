@@ -4,6 +4,8 @@ extends PuzzlePart
 ## 島の変化に反応する物。捧げる場所(OfferingPlace)から広がる「歌の波」が、
 ## 指定した段階で届いたら、現れる・消える・落ちる・移動する。
 ## 見た目や当たり判定は、この部品の子に置いた物がまとめて動く(子が無い時は仮の箱を描く)。
+## 落ちる(FALL)は、下へ落ちながら薄くなって消える(地面の位置は変えずに下へ描くので、
+## 残しておくと手前の地面にめり込んで見えるため)。落ちた先に残したい時は MOVE を使う。
 
 signal changed
 signal appeared
@@ -38,6 +40,7 @@ enum Compare { EXACT, AT_LEAST }
 var done := false
 var _t := 0.0        # 変化の進み 0〜1
 var _start_pos := Vector2.ZERO
+var _child_start := {}   # FALL で下げる子 -> 元の位置
 
 
 func _ready() -> void:
@@ -90,7 +93,13 @@ func _process(delta: float) -> void:
 		Action.MOVE:
 			position = _start_pos + move_offset * _smooth(_t)
 		Action.FALL:
-			pass
+			modulate.a = 1.0 - _t
+			var drop := Vector2(0, fall_amount() * WorldConfig.get_default().level_px)
+			for c in get_children():
+				if c is Node2D and not (c is WaveReceiver):
+					if not _child_start.has(c):
+						_child_start[c] = c.position
+					c.position = _child_start[c] + drop
 		Action.DISAPPEAR:
 			modulate.a = 1.0 - _t
 	queue_redraw()
@@ -109,6 +118,7 @@ func _finish() -> void:
 			_set_visible_content(false)
 			disappeared.emit()
 		Action.FALL:
+			_set_visible_content(false)
 			fell.emit()
 		Action.MOVE:
 			moved.emit()
