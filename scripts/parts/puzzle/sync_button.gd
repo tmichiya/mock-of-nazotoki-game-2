@@ -2,8 +2,10 @@
 class_name SyncButton
 extends PuzzlePart
 ## だいたい同時に踏まないと駄目なボタン。同じ sync_group の名前のボタンを全部、window 秒以内に踏むと成功。
-## 見た目で「同時に押す物だ」と分かるように、同じ組のボタンの数だけ点が並び、踏まれた分だけ光る。
-## 色: 待機(idle)/ 一つ踏まれて他を待っている(waiting。残り時間の輪が縮む)/ 失敗(fail。cooldown 秒は押せない)/ 成功(success)
+## 見た目で「同時に押す物だ」と分かるように、同じ組のボタンの数だけ点が並ぶ(成功すると全部光る)。
+## 色: 待機(idle)/ 踏まれて他を待っている(waiting。残り時間の輪が縮む)/ 失敗(fail。cooldown 秒は押せない)/ 成功(success)
+## 待っている色と輪は「踏まれているボタン」にだけ出す。まだ踏まれていない側は待機の見た目のまま
+## (見た目で「今押せ」と分からないようにする。タイミングは声やギミックで合わせる)
 ## 成功したら clear_event を知らせる(組のどのボタンに書いてもよい)。
 
 signal pressed
@@ -37,6 +39,8 @@ enum St { IDLE, WAITING, FAIL, SUCCESS }
 static var _groups := {}
 
 var state := St.IDLE
+## 今の待ち時間の中で、このボタンが踏まれたか(待っている色はこのボタンにだけ出す)
+var mine := false
 var is_down := false
 var _was_down := false
 var _wait_left := 0.0       # 見た目用(残り時間の割合)
@@ -92,11 +96,15 @@ func _physics_process(_delta: float) -> void:
 		_update_group(g, members, now)
 	_group_down = g.pressed.size()
 	var st: int = g.state
-	if st != state:
+	var m: bool = g.pressed.has(self)
+	if st != state or m != mine:
+		var changed_state := st != state
 		state = st
-		match st:
-			St.FAIL: failed.emit()
-			St.SUCCESS: succeeded.emit()
+		mine = m
+		if changed_state:
+			match st:
+				St.FAIL: failed.emit()
+				St.SUCCESS: succeeded.emit()
 		sync_state()
 	_wait_left = clampf(1.0 - (now - g.t0) / maxf(window, 0.01), 0.0, 1.0) if st == St.WAITING else 0.0
 	queue_redraw()
@@ -150,7 +158,7 @@ func reset() -> void:
 
 
 func get_state() -> Dictionary:
-	return { state = state, down = _group_down }
+	return { state = state, down = _group_down, mine = mine }
 
 
 func apply_state(s: Dictionary) -> void:
@@ -160,12 +168,13 @@ func apply_state(s: Dictionary) -> void:
 			St.FAIL: failed.emit()
 			St.SUCCESS: succeeded.emit()
 	_group_down = s.down
+	mine = s.get("mine", false)
 	queue_redraw()
 
 
 func _color() -> Color:
 	match state:
-		St.WAITING: return color_waiting
+		St.WAITING: return color_waiting if mine else color_idle
 		St.FAIL: return color_fail
 		St.SUCCESS: return color_success
 	return color_idle
@@ -187,10 +196,10 @@ func _draw() -> void:
 	var n := maxi(_group_size, 2) if not Engine.is_editor_hint() else 2
 	for i in range(n):
 		var c := base + Vector2(-(n - 1) * 3.0 + i * 6.0, -radius * 0.7 - 6)
-		var lit := not Engine.is_editor_hint() and (i < _group_down or state == St.SUCCESS)
+		var lit := not Engine.is_editor_hint() and state == St.SUCCESS
 		draw_circle(c, 2.0, col.lightened(0.4) if lit else Color(0, 0, 0, 0.45))
 	# 待っている間の残り時間の輪
-	if state == St.WAITING and _wait_left > 0.0:
+	if state == St.WAITING and mine and _wait_left > 0.0:
 		draw_arc(base + Vector2(0, sink), radius + 3.0, -PI * 0.5, -PI * 0.5 + TAU * _wait_left, 24, color_waiting, 1.5)
 	if Engine.is_editor_hint():
 		draw_string(ThemeDB.fallback_font, base + Vector2(-4, 3), str(sync_group), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color.BLACK)

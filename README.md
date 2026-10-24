@@ -196,7 +196,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 | `SwitchGroup` | どこでも。`switches` にスイッチを登録 | `pattern`(空=全部同時、ありなら組み合わせ)、`window`(少しずれてもよい時間)、間違えたら戻す | `solved` `wrong` `count_changed(n)` `cleared` | `reset_switches()` |
 | `SymbolSign` | 置く。記号は `symbols` に番号で | 記号セット(`resources/symbols/symbols_default.tres`。`textures` に絵を足すと記号が増える)、大きさ、板の高さ・色 | `symbols_changed` | `set_symbol(i)` `next_symbol()` `set_symbols(arr)` |
 | `OnlyVisibleTo` | 見せたい物の子に置く | 誰に見せるか(両方/1人目/2人目/手をつないだ時だけ/誰にも)、見えない人の当たり判定を消す | — | — |
-| `IslandChangeReactor` | 置き、変化させたい物を子にする(子が無ければ仮の箱) | 段階、EXACT/AT_LEAST、動作(現れる/消える/落ちる/移動)、移動量、落ちる段数、時間 | `changed` `appeared` `disappeared` `fell` `moved` | `trigger()` |
+| `IslandChangeReactor` | 置き、変化させたい物を子にする(子が無ければ仮の箱) | 段階、EXACT/AT_LEAST、動作(現れる/消える/落ちる/移動。落ちるは下へ落ちながら薄くなって消える。落ちた先に残したい時は移動を使う)、移動量、落ちる段数、時間 | `changed` `appeared` `disappeared` `fell` `moved` | `trigger()` |
 
 ### I. レバー `Lever`
 - **置き方**: 置く。ポーズ中に腕をレバーへ向けて握り(LB/RB)、ポーズを解いて(握ったまま)レバーから離れる方向へスティックを倒すと引ける
@@ -279,7 +279,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 ### Q. 謎の部品(追加)
 | 部品 | 内容 | 主な調整値 | シグナル |
 | --- | --- | --- | --- |
-| `SyncButton` | だいたい同時に踏まないと駄目なボタン。同じ `sync_group` のボタンを `window` 秒以内に全部踏むと成功。色:待機 / 待っている(残り時間の輪が縮む)/ 失敗(`fail_cooldown` 秒押せない)/ 成功。組の数だけ点が並び、踏まれた分だけ光る | `sync_group`、`window`(1.5秒)、`fail_cooldown`(3秒)、`stay_success`、`clear_event`、4つの色 | `pressed` `waiting_started` `failed` `succeeded` / `reset()` |
+| `SyncButton` | だいたい同時に踏まないと駄目なボタン。同じ `sync_group` のボタンを `window` 秒以内に全部踏むと成功。色:待機 / 待っている(残り時間の輪が縮む。**踏まれたボタンにだけ**出し、まだ踏まれていない側は待機の見た目のまま。見た目で「今押せ」と分からないように)/ 失敗(`fail_cooldown` 秒押せない)/ 成功。組の数だけ点が並び、成功すると全部光る | `sync_group`、`window`(1.5秒)、`fail_cooldown`(3秒)、`stay_success`、`clear_event`、4つの色 | `pressed` `waiting_started` `failed` `succeeded` / `reset()` |
 | `FixedMegaphone` | 地面に刺さった棒に固定された一方向メガホン。吹き口(後ろ)の近くで話すと、口の向きへ扇形に遠くまで、遅れて届く | `direction_deg`、`spread_deg`、`size_scale`、`delay_voice`、`use_radius`、`mouthpiece_offset` | `used_by(i)` `released_by(i)` |
 | `RotaryLever` | どんな物でも回せるレバー。つかんで左スティックを左右に倒している間、そちらへなめらかに回る(握っている人はその場から動かない)。離すと真ん中に戻る。`get_lever_rotation()`・`set_lever_rotation(ラジアン)` を持つ物はそれで、その他の Node2D は rotation で回す | `targets`、`rotate_speed_deg`、`limit_deg`、`required_players`、`clear_event`・`clear_angle_deg`・`clear_tolerance_deg` | `tilted(-1/0/1)` `rotation_changed(deg)` `pull_failed` |
 | `SingingBird`(追加) | 正解の音で鳴くと、金色・光の輪・頭の上の音符になる。和音の判定役がそろうと全部の鳥が喜ぶ | `correct_notes`、`stay_correct`・`correct_time`、`correct_color`、`clear_event` | `correct(midi)` / `celebrate()` `reset()` |
