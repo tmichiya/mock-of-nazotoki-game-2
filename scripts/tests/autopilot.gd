@@ -89,7 +89,7 @@ func report(label: String) -> void:
 	var role := "" if not Net.is_online() else (" host" if Net.is_host() else " client")
 	var line := "[AUTO%s] %s" % [role, label]
 	for p in World.get_players():
-		line += " | P%d pos=(%.0f,%.0f) h=%.2f ground=%.2f st=%d arms=%d,%d" % [p.player_index, p.global_position.x, p.global_position.y, p.height, World.height_at(p.global_position), p.state, p.arm_left, p.arm_right]
+		line += " | P%d pos=(%.0f,%.0f) h=%.2f ground=%.2f st=%d arms=%s,%s" % [p.player_index, p.global_position.x, p.global_position.y, p.height, World.height_at(p.global_position), p.state, _arm_text(p, 0), _arm_text(p, 1)]
 	if Hands.is_linked():
 		line += " | linked=%d" % Hands.get_link_type()
 		if Hands.is_spinning():
@@ -97,3 +97,10 @@ func report(label: String) -> void:
 		if Hands.is_cross_level():
 			line += " cross=%s" % Hands._cross.mode
 	print(line)
+
+
+## 腕の向き(x,y,z を小数1桁)。伸ばしていれば +、つないでいれば L
+static func _arm_text(p: Player, h: int) -> String:
+	var d: Vector3 = p.arm_dir[h]
+	var mark := "L" if p.is_linked(h) else ("+" if p.is_arm_extended(h) else "")
+	return "(%.1f %.1f %.1f)%s" % [d.x, d.y, d.z, mark]

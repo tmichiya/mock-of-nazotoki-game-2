@@ -4,14 +4,20 @@ extends Resource
 ## (HandLinkMonitor を置けば、そのインスペクタからも開ける)
 
 @export_group("つなぐ")
-## 二人の距離(体の中心どうし、px)がこれ以下で、二人とも手を伸ばしているとつながる
-@export var link_distance := 26.0
-## 腕が伸びきった時の二人の距離(px、段の高さも含めた立体の距離)
-@export var max_distance := 30.0
+## 二人とも腕を伸ばして握っていて、手の地面の位置どうしがこの距離(px)以内ならつながる
+@export var link_distance := 8.0
+## 肩どうしの距離が「二人の腕の長さの和」のこの倍で伸びきり、それ以上は離れない(宙づり・回転の半径にも使う)
+@export var max_stretch := 1.3
+## 腕の和を超えた時に引き合う強さ
+@export var pull_strength := 12.0
+## ポーズ中の人が引っ張られる割合(踏ん張る)
+@export_range(0.0, 0.5) var pose_anchor_share := 0.15
 ## 同じ段とみなす高さの差(段)
 @export var same_level_tolerance := 0.6
 
 @export_group("片手:回転投げ")
+## 腕の張りがこれ以上の時だけ回り始める(物を握っている時は回らない)
+@export_range(0.0, 1.0) var spin_start_tension := 0.3
 ## 回る人のスティックの「円の向き」の成分で、回転がどれだけ速くなるか(ラジアン/秒²)
 @export var spin_acceleration := 9.0
 ## 回転の最高速度(ラジアン/秒)
@@ -50,8 +56,9 @@ extends Resource
 
 @export_group("振動")
 ## 相手の重みがかかっている時の振動の強さ
-@export_range(0.0, 1.0) var rumble_weak := 0.25
-@export_range(0.0, 1.0) var rumble_strong := 0.45
+@export_range(0.0, 1.0) var vibration_strength := 0.6
+## 張りがこれ以上で振動する
+@export_range(0.0, 1.0) var vibration_threshold := 0.2
 
 
 static var _default: HandsSettings

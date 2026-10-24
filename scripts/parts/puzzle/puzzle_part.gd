@@ -81,29 +81,42 @@ func _on_peer_ready(id: int) -> void:
 
 # ---------------------------------------------------------------- つかむ
 
-## point(地面の位置)の近く radius 以内に、手を伸ばした空いている手があるプレイヤーを探す。
-## 戻り値 [player, side] / 見つからなければ []
+## point(地面の位置)の近く radius 以内に、つかもうとしている手があるプレイヤーを探す。
+## つかむ条件は手つなぎと同じ形:腕を伸ばしていて(ポーズ中にスティック)、握っていて、つないでいなくて、
+## 手の地面の位置が point から radius 以内。戻り値 [player, hand] / 見つからなければ []
 func find_grabber(point: Vector2, radius: float, level_tolerance: float = 0.6) -> Array:
 	var best := []
 	var best_d := radius
 	for p: Player in World.get_players():
 		if absf(p.height - height) > level_tolerance:
 			continue
-		for side in [Player.Side.LEFT, Player.Side.RIGHT]:
-			if not Hands.hand_is_free(p, side):
+		for h in [Player.Hand.LEFT, Player.Hand.RIGHT]:
+			if not Hands.hand_is_free(p, h):
 				continue
-			var d := p.hand_ground_pos(side).distance_to(point)
-			var d2 := p.global_position.distance_to(point)
-			d = minf(d, d2)
+			var d := p.get_hand_ground_position(h).distance_to(point)
 			if d <= best_d:
 				best_d = d
-				best = [p, side]
+				best = [p, h]
 	return best
 
 
-## 手を伸ばしているか(つかみ続けているかの判定)
-static func is_reaching(p: Player, side: int) -> bool:
-	return p.reach_left if side == Player.Side.LEFT else p.reach_right
+## 握り続けているか(つかんだ物を持ち続ける条件)
+static func is_reaching(p: Player, h: int) -> bool:
+	return p.is_gripping(h)
+
+
+## つかんだ手の行き先を、この物の位置にする(毎フレーム呼ぶ)。外す時は release_hand
+func hold_hand(p: Player, h: int, point: Vector2) -> void:
+	p.set_link_point(h, point, 0.0, _link_key(), height)
+
+
+func release_hand(p: Player, h: int) -> void:
+	if is_instance_valid(p):
+		p.set_link_point(h, null, 0.0, _link_key())
+
+
+func _link_key() -> String:
+	return "part:" + str(get_path())
 
 
 # ---------------------------------------------------------------- 描画の小物

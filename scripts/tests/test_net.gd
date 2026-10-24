@@ -40,7 +40,7 @@ func _steps() -> Array:
 		{ t = 0.3, call = "speak_on", log = "P2 on level 1, P1 on level 0: expect nothing" },
 		{ t = 0.1, call = "speak_off" },
 		{ t = 2.0, call = "both_on_plateau_edge" },
-		{ t = 0.5, p1 = { grab_r = true }, p2 = { grab_l = true } },
+		{ t = 0.5, p1 = { pose = true, arm_r = Vector2(1, 0), grab_r = true }, p2 = { pose = true, arm_l = Vector2(-1, 0), grab_l = true } },
 		{ t = 0.8, p1 = { grab_r = true, move = Vector2.LEFT }, p2 = { grab_l = true } },
 		{ t = 0.3, call = "speak_on", log = "linked across levels (P1 below): expect heard", p1 = { grab_r = true }, p2 = { grab_l = true } },
 		{ t = 0.1, call = "speak_off", p1 = { grab_r = true }, p2 = { grab_l = true } },
@@ -77,4 +77,4 @@ func p2_to_plateau() -> void:
 
 func both_on_plateau_edge() -> void:
 	_place_local(1, Vector2(14 * 32 + 8, 7.5 * 24))
-	_place_local(2, Vector2(14 * 32 + 30, 7.5 * 24))
+	_place_local(2, Vector2(14 * 32 + 44, 7.5 * 24))

@@ -59,7 +59,7 @@ func _physics_process(delta: float) -> void:
 					p.held_objects[_holder[1]] = null
 				_holder = []
 			else:
-				global_position = p.hand_ground_pos(_holder[1])
+				global_position = p.get_hand_ground_position(_holder[1])
 				height = p.height
 		if _holder.is_empty():
 			var g := find_grabber(global_position, 10.0)

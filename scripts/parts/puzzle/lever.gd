@@ -61,6 +61,7 @@ func _physics_process(delta: float) -> void:
 			_pull = 0.0
 	if _holder == null:
 		return
+	hold_hand(_holder, _holder_side, global_position)
 	# 引く(レバーから離れる方向にスティックを倒す)
 	var away := (_holder.global_position - global_position).normalized()
 	var push: float = _holder.input.move.dot(away)
@@ -92,6 +93,7 @@ func count_pullers() -> int:
 func _release() -> void:
 	if is_instance_valid(_holder):
 		_holder.held_objects[_holder_side] = null
+		release_hand(_holder, _holder_side)
 	_holder = null
 
 
