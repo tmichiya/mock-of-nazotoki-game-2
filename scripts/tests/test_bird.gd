@@ -17,6 +17,7 @@ func _ready() -> void:
 	for b in ["BirdA", "BirdB", "BirdC"]:
 		var bird := get_node(b)
 		bird.called.connect(func(m): print("[AUTO] %s called %.0f at %.2f" % [b, m, Waves.clock]))
+	_hook_tones.call_deferred()
 
 
 func _steps() -> Array:
@@ -36,7 +37,40 @@ func _steps() -> Array:
 		{ t = 1.0, call = "sing_c", log = "voice C4 (261.6Hz) near BirdA: expect BirdA sings" },
 		{ t = 0.5, call = "sing_off" },
 		{ t = 16.0, log = "waiting: expect birds call in turn, apart, never together; Eater relays a call to RBird" },
+		{ t = 11.0, call = "go_far", log = "both players far from the birds (11s)" },
+		{ t = 0.1, call = "report_heard", log = "far: expect no bird sound heard" },
+		{ t = 11.0, call = "go_near", log = "both players next to the birds (11s)" },
+		{ t = 0.1, call = "report_heard", log = "near: expect bird sounds heard" },
+		{ t = 11.0, call = "go_relay", log = "P1 where the Eater spits, out of the birds' reach (11s)" },
+		{ t = 0.1, call = "report_heard", log = "relay: expect Eater sounds later than the calls (BirdC is close enough to be heard directly)" },
 	]
+
+
+var _heard := 0
+
+
+## 鳥・動物の音が「この端末で聞こえた」回数を数える
+func _hook_tones() -> void:
+	for n in ["BirdA", "BirdB", "BirdC", "Eater"]:
+		for c in get_node(n).get_children():
+			if c is WaveTone:
+				c.played.connect(func(hz): _heard += 1; print("[AUTO] heard %s %.0fHz at %.2f" % [n, hz, Waves.clock]))
+
+
+func go_far() -> void:
+	_heard = 0
+	place(1, cell(Vector2(21, 13)))
+	place(2, cell(Vector2(20, 13)))
+
+
+func go_near() -> void:
+	_heard = 0
+	place(1, cell(Vector2(11, 4)))
+	place(2, cell(Vector2(12, 4)))
+
+
+func report_heard() -> void:
+	print("[AUTO] heard count=%d" % _heard)
 
 
 func sing_c() -> void:
@@ -71,3 +105,9 @@ func off_pitch() -> void:
 func _help() -> String:
 	return "【歌う鳥】鳥の近くで歌うか、瓶笛(近くで X / R)を鳴らすと、鳥が近い音で鳴き直す。3羽がド・ミ・ソをそろえると和音の判定役が成功を出す
 右上のメーターで、マイク(F4で切替)・音量・声の高さを確かめる。声が届いたのに高さが取れない時は Bird.heard(-1) が出る"
+
+
+func go_relay() -> void:
+	_heard = 0
+	place(1, $RBird.global_position)
+	place(2, cell(Vector2(21, 13)))
