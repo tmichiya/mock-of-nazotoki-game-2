@@ -23,6 +23,7 @@ var builders := {
 	"clear": _build_clear,
 	"gimmicks": _build_gimmicks,
 	"fence": _build_fence,
+	"symbol_code": _build_symbol_code,
 }
 
 
@@ -454,7 +455,7 @@ func _build_catalog() -> void:
 	var root := new_world("res://scripts/tests/catalog.gd",
 		"【部品カタログ】全部品。1:段のちがう音 2:楕円 3:重なる石 4:綿毛 5:カエル 6:動物 / F1 段番号 F2 波の範囲 F3 誰の目で見るか")
 	var t := add_terrain(root)
-	fill(t, Rect2i(0, 0, 66, 52), 0)
+	fill(t, Rect2i(0, 0, 66, 65), 0)
 
 	# --- 地形(0,0)
 	var o := Vector2(0, 0)
@@ -656,6 +657,23 @@ func _build_catalog() -> void:
 	fc.length = 96.0
 	fc.rotation_degrees = 30.0
 
+	# --- 記号の暗号(0,4)
+	o = Vector2(0, 52)
+	g = group(root, "SymbolCode")
+	var sl := inst(root, "res://scenes/parts/puzzle/symbol_code_lock.tscn", cell_center(o + Vector2(6, 4)), g)
+	sl.name = "SymbolLock"
+	sl.code_length = 3
+	for i in range(5):
+		var sp := inst(root, "res://scenes/parts/puzzle/symbol_pad.tscn", cell_center(o + Vector2(2 + i * 2, 7)), g)
+		sp.name = "SymbolPad%d" % i
+		sp.lock = NodePath("../SymbolLock")
+		sp.symbol = i
+	var spic := inst(root, "res://scenes/parts/puzzle/symbol_code_picture.tscn", cell_center(o + Vector2(15, 4)), g)
+	spic.name = "SymbolPicture"
+	spic.lock = NodePath("../SymbolLock")
+	label(g, root, "記号の暗号:絵の記号を声で伝え、床を順に踏む
+間違えると絵の記号が変わる", o + Vector2(1, 1))
+
 	# 共通
 	inst(root, "res://scenes/parts/hands/hand_link_monitor.tscn")
 	inst(root, "res://scenes/parts/voice/voice_monitor.tscn")
@@ -757,3 +775,26 @@ func _build_fence() -> void:
 	fv.angle_deg = 90.0
 	add_common(root, Vector2(5, 3), Vector2(2, 12))
 	save(root, "res://scenes/tests/test_fence.tscn")
+
+
+# ---------------------------------------------------------------- 記号の暗号
+
+func _build_symbol_code() -> void:
+	var root := flat_world("res://scripts/tests/test_symbol_code.gd", "", Vector2i(24, 14))
+	var pic := part(root, "symbol_code_picture", "Picture", Vector2(17, 3))
+	pic.lock = NodePath("../Lock")
+	var lock := part(root, "symbol_code_lock", "Lock", Vector2(6, 4))
+	lock.code_length = 3
+	lock.clear_event = &"code_done"
+	for i in range(5):
+		var pad := part(root, "symbol_pad", "Pad%d" % i, Vector2(2 + i * 2, 7))
+		pad.lock = NodePath("../Lock")
+		pad.symbol = i
+	var door := part(root, "door", "Door", Vector2(6, 10))
+	door.width = 64.0
+	var opener := cpart(root, "clear_reactor", "OpenDoor", Vector2(9, 10))
+	opener.listen.assign([&"code_done"])
+	opener.action = 4
+	opener.targets.assign([NodePath("../Door")])
+	add_common(root, Vector2(3, 11), Vector2(16, 5))
+	save(root, "res://scenes/tests/test_symbol_code.tscn")

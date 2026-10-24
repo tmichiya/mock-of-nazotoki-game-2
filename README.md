@@ -284,9 +284,12 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 | `RotaryLever` | どんな物でも回せるレバー。つかんで左スティックを左右に倒している間、そちらへなめらかに回る(握っている人はその場から動かない)。離すと真ん中に戻る。`get_lever_rotation()`・`set_lever_rotation(ラジアン)` を持つ物はそれで、その他の Node2D は rotation で回す | `targets`、`rotate_speed_deg`、`limit_deg`、`required_players`、`clear_event`・`clear_angle_deg`・`clear_tolerance_deg` | `tilted(-1/0/1)` `rotation_changed(deg)` `pull_failed` |
 | `SingingBird`(追加) | 正解の音で鳴くと、金色・光の輪・頭の上の音符になる。和音の判定役がそろうと全部の鳥が喜ぶ | `correct_notes`、`stay_correct`・`correct_time`、`correct_color`、`clear_event` | `correct(midi)` / `celebrate()` `reset()` |
 | `VoiceEater`(追加) | 向きをなめらかに持つ(`facing_deg`)。回転レバーで回せる | — | — |
+| `SymbolCodeLock` | 記号の暗号の入力台と正解判定。答えの記号の並びをランダムに決め、記号の床を踏んだ順に入力が台に並ぶ。`code_length` 個そろうと判定し、正解なら `clear_event`。間違えると入力が消えて答えがランダムに変わる(前と同じ並びにはならない)。答えの記号は、つないだ記号の床の記号から選ぶ | `code_length`(伝える記号の数)、`allow_repeat`、`reshuffle_on_wrong`、`wrong_cooldown`、`stay_solved`、`clear_event`、`symbol_set`、3つの色 | `code_changed(code)` `input_changed(entered)` `solved` `wrong` / `input_symbol(i)` `clear_input()` `reshuffle()` `reset()` |
+| `SymbolPad` | 記号の床。踏むと `lock` の入力台に `symbol` の記号を1つ入力する(乗り続けても1回。降りて踏み直すともう1回) | `lock`、`symbol`、`radius`、色 | `stepped(symbol)` |
+| `SymbolCodePicture` | 記号の絵(画架に立てた額)。`lock` の入力台の答えを左から描き、答えが変わると絵も変わる。両方に見える(片方だけにしたい時は子に `OnlyVisibleTo`) | `lock`、`per_row`(1行の数)、`symbol_size`、`stand_levels`、3つの色 | — |
 | `Fence` | 柵。プレイヤーや綿毛などの物は通さないが、音の波(声も)は通り抜ける。向きはノードの回転(エディタの回転ツール)でも `angle_deg` でも変えられ、どの向きでも杭は上に立つ。杭ごとに前後を並べ替えるので、斜め・縦に置いても人と正しく重なる | `length`、`angle_deg`、`post_spacing`、`fence_levels`(見た目の高さ)、`thickness`(当たり判定の厚み)、`blocks_props`(false で物はすり抜け、プレイヤーだけ止める)、2つの色 | — |
 
-確認用シーン:`scenes/tests/test_clear.tscn`(窓口・ゴール)、`scenes/tests/test_gimmicks.tscn`(同時押し・固定メガホン・回転レバー・鳥)、`scenes/tests/test_fence.tscn`(柵)
+確認用シーン:`scenes/tests/test_clear.tscn`(窓口・ゴール)、`scenes/tests/test_gimmicks.tscn`(同時押し・固定メガホン・回転レバー・鳥)、`scenes/tests/test_fence.tscn`(柵)、`scenes/tests/test_symbol_code.tscn`(記号の暗号)
 
 ## 選んだ解釈(仕様が曖昧で、こちらで決めた所)
 
