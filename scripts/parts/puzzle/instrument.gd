@@ -26,7 +26,7 @@ signal played(midi: float)
 var _holder: Array = []
 var _cool := 0.0
 var _prev := {}
-var _synth: ToneSynth
+var _synth: WaveTone
 
 
 func _ready() -> void:
@@ -35,11 +35,11 @@ func _ready() -> void:
 		return
 	add_to_group("props")
 	process_physics_priority = 20
-	_synth = ToneSynth.new()
+	# 音は、波の届く所にいるプレイヤーにだけ鳴る
+	_synth = WaveTone.new()
+	_synth.source_id = _source()
+	_synth.duration = 0.5
 	add_child(_synth)
-	Waves.wave_emitted.connect(func(p):
-		if str(p.source) == _source():
-			_synth.play_note(float(p.pitch), 0.5))
 
 
 func _source() -> String:

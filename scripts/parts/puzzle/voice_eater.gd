@@ -48,7 +48,7 @@ var facing_deg := 0.0
 var _queue: Array = []   # [吐く時刻, 波の情報]
 var _eaten := {}         # 食べた波のID
 var _receiver: WaveReceiver
-var _synth: ToneSynth
+var _synth: WaveTone
 
 
 func _ready() -> void:
@@ -63,17 +63,10 @@ func _ready() -> void:
 	_receiver.fixed_level = get_level()
 	add_child(_receiver)
 	_receiver.wave_received_info.connect(_on_wave)
-	_synth = ToneSynth.new()
+	# 鳥の鳴き声を吐き出した時は、その音が波に乗って遅れて届く
+	_synth = WaveTone.new()
+	_synth.source_id = get_source_id()
 	add_child(_synth)
-	Waves.wave_emitted.connect(_on_any_wave)
-
-
-## 鳥の鳴き声を吐き出した時は、その音で鳴る(ホストでもクライアントでも)
-func _on_any_wave(p: Dictionary) -> void:
-	if str(p.source) != get_source_id() or not (p.get("payload", {}) as Dictionary).has("note"):
-		return
-	if float(p.get("pitch", -1.0)) > 0.0:
-		_synth.play_note(float(p.pitch), 0.45)
 
 
 func get_source_id() -> String:
@@ -116,6 +109,7 @@ func _spit(info: Dictionary) -> void:
 		shape_path = "res://resources/wave_shapes/voice.tres"
 	elif payload.has("note"):
 		shape_path = "res://resources/wave_shapes/bird.tres"   # 鳥の鳴き声は鳥の鳴き声のまま運ぶ
+		payload.delayed = true   # 吐き出した鳴き声は、波が届いた時に聞こえる
 	var dir := Vector2.from_angle(deg_to_rad(facing_deg))
 	var spread := deg_to_rad(straight_spread_deg if spit_shape == SpitShape.STRAIGHT else fan_spread_deg)
 	var size: float = maxf(min_spit_size, float(info.strength) * size_multiplier)

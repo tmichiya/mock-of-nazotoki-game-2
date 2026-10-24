@@ -67,7 +67,7 @@ signal called(midi: float)
 var last_note := -1.0
 var _last_time := -100.0
 var _receiver: WaveReceiver
-var _synth: ToneSynth
+var _synth: WaveTone
 var _flash := 0.0
 ## 正解しているか
 var is_correct := false
@@ -89,7 +89,8 @@ func _ready() -> void:
 	_receiver.fixed_level = get_level()
 	add_child(_receiver)
 	_receiver.wave_received_info.connect(_on_wave)
-	_synth = ToneSynth.new()
+	_synth = WaveTone.new()
+	_synth.source_id = "bird:" + str(name)
 	add_child(_synth)
 	Waves.wave_emitted.connect(_on_any_wave)
 	add_to_group("singing_bird")
@@ -201,11 +202,10 @@ func _physics_process(_delta: float) -> void:
 		g.idx = 0
 
 
-## 自分の鳴き声の波が出た時に音を鳴らす(ホストでもクライアントでも)
+## 自分の鳴き声の波が出た時(ホストでもクライアントでも)。音は WaveTone が、波の届くプレイヤーにだけ鳴らす
 func _on_any_wave(p: Dictionary) -> void:
 	if str(p.source) != "bird:" + str(name):
 		return
-	_synth.play_note(float(p.pitch), 0.45)
 	_flash = 1.0
 	if not is_authority():
 		last_note = p.payload.get("note", -1.0)
