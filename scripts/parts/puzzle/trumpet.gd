@@ -13,6 +13,8 @@ signal put_down
 @export var size_scale := 2.2
 ## つかめる距離(px)
 @export var grab_radius := 10.0
+## 持っている人の声を、波が届いた時に遅れて聞こえるようにする(遠くまで届く代わりに、届くまで時間がかかる)
+@export var delay_voice := true
 @export var color := Color("e0b84a")
 
 var _holder: Array = []
@@ -55,7 +57,7 @@ func _physics_process(_delta: float) -> void:
 		var p: Player = _holder[0]
 		global_position = p.global_position + p.facing * 8.0
 		height = p.height
-		p.voice_modifier = { dir = p.facing, spread = deg_to_rad(spread_deg), size_scale = size_scale }
+		p.voice_modifier = { dir = p.facing, spread = deg_to_rad(spread_deg), size_scale = size_scale, delay_voice = delay_voice }
 	else:
 		_update_height()
 	queue_redraw()
@@ -69,7 +71,7 @@ func _follow_remote() -> void:
 			global_position = p.global_position + p.facing * 8.0
 			height = p.height
 			if p.is_local:
-				p.voice_modifier = { dir = p.facing, spread = deg_to_rad(spread_deg), size_scale = size_scale }
+				p.voice_modifier = { dir = p.facing, spread = deg_to_rad(spread_deg), size_scale = size_scale, delay_voice = delay_voice }
 	queue_redraw()
 
 
