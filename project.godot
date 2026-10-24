@@ -11,13 +11,43 @@ config_version=5
 [application]
 
 config/name="mock of nazotoki game 2"
+run/main_scene="res://ui/connect_screen.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
+[audio]
+
+driver/enable_input=true
+
+[autoload]
+
+World="*res://autoload/world.gd"
+Net="*res://autoload/net.gd"
+Hands="*res://autoload/hands.gd"
+Waves="*res://autoload/waves.gd"
+Voice="*res://autoload/voice.gd"
+
 [display]
 
+window/size/viewport_width=1280
+window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[layer_names]
+
+2d_physics/layer_1="壁 上端0段"
+2d_physics/layer_2="壁 上端1段"
+2d_physics/layer_3="壁 上端2段"
+2d_physics/layer_4="壁 上端3段"
+2d_physics/layer_5="壁 上端4段"
+2d_physics/layer_6="壁 上端5段"
+2d_physics/layer_7="壁 上端6段"
+2d_physics/layer_8="壁 上端7段"
+2d_physics/layer_17="島の外周"
+2d_physics/layer_18="置き物"
+2d_physics/layer_19="プレイヤー"
+2d_physics/layer_20="軽い物"
 
 [physics]
 
@@ -25,4 +55,5 @@ window/stretch/aspect="expand"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
