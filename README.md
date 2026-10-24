@@ -284,8 +284,9 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 | `RotaryLever` | どんな物でも回せるレバー。つかんで左スティックを左右に倒している間、そちらへなめらかに回る(握っている人はその場から動かない)。離すと真ん中に戻る。`get_lever_rotation()`・`set_lever_rotation(ラジアン)` を持つ物はそれで、その他の Node2D は rotation で回す | `targets`、`rotate_speed_deg`、`limit_deg`、`required_players`、`clear_event`・`clear_angle_deg`・`clear_tolerance_deg` | `tilted(-1/0/1)` `rotation_changed(deg)` `pull_failed` |
 | `SingingBird`(追加) | 正解の音で鳴くと、金色・光の輪・頭の上の音符になる。和音の判定役がそろうと全部の鳥が喜ぶ | `correct_notes`、`stay_correct`・`correct_time`、`correct_color`、`clear_event` | `correct(midi)` / `celebrate()` `reset()` |
 | `VoiceEater`(追加) | 向きをなめらかに持つ(`facing_deg`)。回転レバーで回せる | — | — |
+| `Fence` | 柵。プレイヤーや綿毛などの物は通さないが、音の波(声も)は通り抜ける。向きはノードの回転(エディタの回転ツール)でも `angle_deg` でも変えられ、どの向きでも杭は上に立つ。杭ごとに前後を並べ替えるので、斜め・縦に置いても人と正しく重なる | `length`、`angle_deg`、`post_spacing`、`fence_levels`(見た目の高さ)、`thickness`(当たり判定の厚み)、`blocks_props`(false で物はすり抜け、プレイヤーだけ止める)、2つの色 | — |
 
-確認用シーン:`scenes/tests/test_clear.tscn`(窓口・ゴール)、`scenes/tests/test_gimmicks.tscn`(同時押し・固定メガホン・回転レバー・鳥)
+確認用シーン:`scenes/tests/test_clear.tscn`(窓口・ゴール)、`scenes/tests/test_gimmicks.tscn`(同時押し・固定メガホン・回転レバー・鳥)、`scenes/tests/test_fence.tscn`(柵)
 
 ## 選んだ解釈(仕様が曖昧で、こちらで決めた所)
 
