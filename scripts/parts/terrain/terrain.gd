@@ -3,6 +3,8 @@ class_name Terrain
 extends TileMapLayer
 ## 高さのある地形。terrain_tileset.tres のタイルを塗るだけで段差と斜面ができる。
 ## 塗ったタイル自体は描かず(実行時は透明)、段の高さに合わせた床・崖の側面・輪郭・影を自動で描く。
+## タイルは「地面の位置」に塗る。高い段の床は、塗った場所より段の高さの分だけ上に描かれる。
+## エディタでは editor_view で「両方 / 塗る用 / 仕上がり」を切り替えられる。
 ##
 ## タイルのカスタムデータ:
 ##   level … 段番号(斜面は低い側の段)
@@ -45,11 +47,20 @@ const ROW_MARGIN := 8
 @export var cliffs_reflect := true
 
 @export_group("エディタ表示")
-## エディタで、塗ったタイル(論理レイヤー)をどれくらい透かして見せるか。0で非表示
-@export_range(0.0, 1.0) var logic_alpha_in_editor := 0.0:
+enum EditorView { BOTH, PAINT, RENDERED }
+## エディタでの見せ方。BOTH = 仕上がりの上に、塗ったタイルを薄く重ねる(どこに塗ったか分かる)/
+## PAINT = 塗ったタイルだけ(真上から見た平らな地図。塗りやすい)/ RENDERED = 仕上がりだけ
+@export var editor_view := EditorView.BOTH:
+	set(v):
+		editor_view = v
+		_apply_view()
+## BOTH の時に、塗ったタイルをどれくらい透かして重ねるか
+@export_range(0.0, 1.0) var logic_alpha_in_editor := 0.35:
 	set(v):
 		logic_alpha_in_editor = v
-		notify_runtime_tile_data_update()
+		_apply_view()
+## パレットの見た目(色・模様)を、今の段の見た目(style)に合わせて作り直す
+@export_tool_button("パレットを段の見た目に合わせる") var rebuild_palette_button := _rebuild_palette
 ## 段番号を各マスに表示する(実行中は F1 でも切り替え)
 @export var show_level_numbers := false:
 	set(v):
@@ -86,6 +97,7 @@ func _ready() -> void:
 	if not changed.is_connected(_queue_rebuild):
 		changed.connect(_queue_rebuild)
 	_rebuild()
+	_apply_view()
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -100,15 +112,37 @@ func _get_configuration_warnings() -> PackedStringArray:
 	return w
 
 
-# ---------------------------------------------------------------- 論理タイルを透明にする
+# ---------------------------------------------------------------- 塗ったタイルの見せ方
 
-func _use_tile_data_runtime_update(_coords: Vector2i) -> bool:
-	return true
+## 塗ったタイルは self_modulate の透明度で隠す(タイルごとの処理をしないので重くならない。
+## 地形の描画は子のノードなので self_modulate の影響を受けない)
+func _apply_view() -> void:
+	if not is_inside_tree():
+		return
+	var logic_a := 0.0
+	var rendered := true
+	if Engine.is_editor_hint():
+		match editor_view:
+			EditorView.BOTH:
+				logic_a = logic_alpha_in_editor
+			EditorView.PAINT:
+				logic_a = 1.0
+				rendered = false
+			EditorView.RENDERED:
+				logic_a = 0.0
+	self_modulate = Color(1, 1, 1, logic_a)
+	for r in _rows.values():
+		r.visible = rendered
+	for r in _wave_rows.values():
+		r.visible = rendered
 
 
-func _tile_data_runtime_update(_coords: Vector2i, tile_data: TileData) -> void:
-	var a := logic_alpha_in_editor if Engine.is_editor_hint() else 0.0
-	tile_data.modulate = Color(1, 1, 1, a)
+func _rebuild_palette() -> void:
+	if config == null or style == null:
+		return
+	var err := TerrainPalette.save(config, style)
+	if err != OK:
+		push_error("パレット画像を保存できませんでした: %s" % error_string(err))
 
 
 # ---------------------------------------------------------------- 組み立て
@@ -203,6 +237,7 @@ func _sync_row_nodes() -> void:
 		_rows[r].position = Vector2(0, r * th - 0.5)
 		_wave_rows[r].position = Vector2(0, r * th - 0.25)
 		_rows[r].queue_redraw()
+	_apply_view()
 
 
 func get_wave_row_nodes() -> Array:

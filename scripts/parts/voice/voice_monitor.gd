@@ -36,7 +36,7 @@ func _ready() -> void:
 		_meter = Label.new()
 		_meter.anchor_left = 1.0
 		_meter.anchor_right = 1.0
-		_meter.offset_left = -330
+		_meter.offset_left = -420
 		_meter.offset_top = 8
 		_meter.add_theme_font_size_override("font_size", 14)
 		_meter.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -49,10 +49,15 @@ func _process(_delta: float) -> void:
 		return
 	var bars := int(Voice.get_volume() * 20.0)
 	var midi := Voice.get_pitch_midi()
-	_meter.text = "音量 %5.1f dB [%s%s]\n声の高さ %s Hz (%s)\n%s" % [
-		Voice.get_volume_db(), "|".repeat(bars), " ".repeat(20 - bars),
+	_meter.text = "マイク: %s (F4 で切替)\n音量 %5.1f dB [%s%s] しきい値 %.0f dB\n声の高さ %s Hz (%s)\n%s" % [
+		Voice.get_input_device(), Voice.get_volume_db(), "|".repeat(bars), " ".repeat(20 - bars), Voice.settings.threshold_db,
 		"%.0f" % Voice.get_pitch_hz() if Voice.get_pitch_hz() > 0 else "-",
-		PitchDetector.midi_name(midi), "話している" if Voice.is_speaking() else ""]
+		PitchDetector.midi_name(midi), "話している(声の波を出している)" if Voice.is_speaking() else "(しきい値より小さいので声の波は出ていない)"]
+	var d: Dictionary = Voice.debug
+	_meter.text += "\n--- 確認用 ---\n高さの候補 %s Hz  谷の深さ %.2f(%.2f 以下で採用)\n取り込み %.0f/秒(ミックス %.0f)途切れ %.0f回/秒\n左 %.0f dB  右 %.0f dB  左右の相関 %.2f(使う音: %s)\nF5: 3秒録って user://voice_debug.wav に保存" % [
+		"%.0f" % d.candidate_hz if d.candidate_hz > 0 else "-", d.dip, Voice.settings.pitch_fallback_threshold,
+		d.capture_rate, AudioServer.get_input_mix_rate() if Voice.settings.mic_source == 0 else AudioServer.get_mix_rate(), d.gaps, d.left_db, d.right_db, d.correlation,
+		["左右の平均", "左", "右"][Voice.settings.mic_channel]]
 
 
 func get_pitch_hz() -> float:

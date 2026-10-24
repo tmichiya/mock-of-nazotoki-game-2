@@ -46,7 +46,7 @@
 | 滑空 | Space / A | Enter |
 | 楽器 | R / X | `\` |
 
-F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見えない物」を誰の目で見るか(1台で2人の確認用)
+F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見えない物」を誰の目で見るか(1台で2人の確認用)/ F4 マイク(録音デバイス)の切り替え / F5 ゲームが聞いているマイクの音を3秒録って `user://voice_debug.wav` に保存
 
 ### 1台で2つ起動して通信を試す
 1. エディタの「デバッグ > 複数インスタンスの実行をカスタマイズ」で、インスタンス数を2にする
@@ -90,7 +90,10 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 
 ### A. 高さのある地形 `Terrain`(`scripts/parts/terrain/terrain.gd`)
 - **置き方**: `TileMapLayer` として置き、`resources/terrain/terrain_tileset.tres` のタイルを塗る。パレットは「行=段番号(0〜7)、列=平地/奥へ上る/手前へ上る/右へ上る/左へ上る」。斜面の段番号は低い側
-- 塗った場所(地面の位置)に対して、見た目は段の高さ分だけ上に描かれる。`logic_alpha_in_editor` を上げると塗ったタイルを透かして見られる
+- 塗った場所(地面の位置)に対して、見た目は段の高さ分だけ上に描かれる(2段なら1マス分上)。高い段を塗ると「塗った所より上に床が出る」のはこのため
+- **エディタでの見せ方** `editor_view`: `BOTH`(既定。仕上がりの上に、塗ったタイルを `logic_alpha_in_editor` の濃さで重ねる)/
+  `PAINT`(塗ったタイルだけ。真上から見た平らな地図になるので塗りやすい)/ `RENDERED`(仕上がりだけ)。塗る時は `PAINT`、確かめる時は `RENDERED` がおすすめ
+- **パレットの見た目**: 段ごとの色・模様は地形が描く床と同じで、左上に段番号、斜面は上り方向の矢印。段の色を変えたら、Terrain のインスペクタの「パレットを段の見た目に合わせる」ボタンでパレットも合わせる(パレットには崖の側面や輪郭は無いので、仕上がりとはその分だけ違って見える)
 - **調整できる値**: `config`(寸法)、`style`(`resources/settings/level_style.tres`:段ごとの床の色・模様・模様テクスチャ、崖の暗さ、輪郭、根元の影)、`cliffs_reflect`(崖が音を跳ね返すか)、`show_level_numbers`
 - **同じ段は必ず同じ見た目**: 色と模様は `LevelStyle` の段番号からしか決まらない(マスごとの例外は作れない)
 - **問い合わせ**(`World.` からも同じ名前で呼べる。地形が無ければ平らな0段):
@@ -156,10 +159,17 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 - 波を出す: `Waves.emit({ origin, level, size, shape, source, color, dir, spread, payload, global })`
 
 ### F. マイクと声の波 `Voice`(自動読み込み)+ `VoiceMonitor`(`scenes/parts/voice/voice_monitor.tscn`)
-- **調整できる値**: `resources/settings/voice_settings.tres`(感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
+- **調整できる値**: `resources/settings/voice_settings.tres`(録音デバイス `input_device`(空なら Windows の既定。実行中は F4 で切替)、読み方 `mic_source`(DIRECT = デバイスから直接読む。既定 / BUS = 以前の方法)、使う音 `mic_channel`(左右の平均/左/右)、感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
 - **問い合わせ**: `Voice.get_pitch_hz()` `Voice.get_pitch_midi()`(60=真ん中のド)`Voice.get_volume()`(0〜1)
-- **シグナル**(VoiceMonitor): `pitch_changed(hz, midi)` `speaking_changed(speaking)` `started_speaking` `stopped_speaking`。`show_meter` で画面右上に音量・声の高さ
-- 声の高さ: 8kHz に間引いて自己相関(YIN 簡易版)、中央値で安定させ、自信のない結果は捨てる
+- **シグナル**(VoiceMonitor): `pitch_changed(hz, midi)` `speaking_changed(speaking)` `started_speaking` `stopped_speaking`。`show_meter` で画面右上に、使っているマイク・音量としきい値・声の高さ・声の波を出しているか
+- 声の高さ: 8kHz に間引いて自己相関(YIN 簡易版)。`pitch_threshold` を下回る谷が無くても、`pitch_fallback_threshold` より深い谷があれば採用する(雑音のある実際の声向け)。取れた高さは `pitch_hold` 秒覚えておき、その間の中央値をとる
+- **声が反応しない時**: メーターで (1) マイクが歌っている物か(違えば F4)、(2) 音量がしきい値を超えて「声の波を出している」になるか(超えなければ `mic_gain_db` を上げるか `threshold_db` を下げる)、(3) 声の高さが出るか、を確かめる。声の波は小さい声ほど届く距離が短いので、鳥などには近づいて歌う
+- **声の高さが出ない時**(メーターの「確認用」の行):
+  - 「谷の深さ」が採用の値(`pitch_fallback_threshold`)を少し超えるだけなら、その値を上げる。1 に近いままなら、音そのものに高さが無い(雑音か、音が壊れている)
+  - 「途切れ」が毎秒何回も出る、または「取り込み」がミックスの値より少ない時は、マイクの音が途中で抜けている
+  - 「左右の相関」が -1 に近い時は、左右の音が打ち消し合っている。`mic_channel` を左か右にする。片方だけ音量が大きい時も、そちらに合わせる
+  - F5 で録った `voice_debug.wav` を聞くと、ゲームが実際に聞いている音を確かめられる
+- 以前は AudioStreamMicrophone を音声バスに流して取り込んでいたが、デバイスの標本化周波数(例 16kHz)と出力(例 96kHz)が違うと、音が同じ値の繰り返しや途切れだらけになり、声の高さが取れなかった。今は Godot 4.5 以降の `AudioServer.get_input_frames()` でデバイスから直接読む
 
 ### G. 通信とゲーム内VC `Net` / `Voice`
 - 接続: ENet、IP指定。`scenes/ui/connect_screen.tscn`(メインシーン)か起動引数
@@ -204,7 +214,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 
 ### M. 歌う鳥 `SingingBird` / 和音の判定役 `ChordJudge` / 楽器 `Instrument`
 - **鳥**: 鳴ける音 `notes`(MIDI番号)、許容幅(半音)、オクターブ違いを同じとみなすか、反応する種類(voice・instrument)、間隔、鳴き声の波の大きさ・形
-  - **シグナル**: `sang(midi)` `out_of_tune(midi)` / **受け口**: `hear_pitch(midi)`
+  - **シグナル**: `sang(midi)` `out_of_tune(midi)` `heard(midi)`(声や楽器の音が届いた。高さが取れていなければ -1 で、鳴き直さない)/ **受け口**: `hear_pitch(midi)`
 - **和音の判定役**: `birds` に鳥を登録、`chord`(MIDI番号)、`window`、オクターブ違い、余計な音を許さない、一度だけ
   - **シグナル**: `chord_completed` `progress_changed(matched, needed)` / **受け口**: `reset()`
 - **楽器(瓶笛)**: `note`、鳴らせる距離、大きさ、間隔、持ち運べるか。近くで楽器ボタン(X / R)を押すと鳴る。ポーズ中に腕を向けて握ると運べる

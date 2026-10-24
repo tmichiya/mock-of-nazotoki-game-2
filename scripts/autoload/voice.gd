@@ -15,6 +15,10 @@ signal speaking_changed(speaking: bool)
 signal voice_wave_sent(size: float)
 ## 相手(または動物が吐き出した)声を再生し始めた。delay は波が出てから再生までの秒数
 signal voice_played(source: String, delay: float, immediate: bool)
+## 録音デバイスを切り替えた
+signal input_device_changed(device_name: String)
+## 確認用の録音を保存した(F5)
+signal debug_recording_saved(path: String)
 
 const MIC_BUS := "VoiceMic"
 
@@ -60,10 +64,19 @@ func _setup_mic() -> void:
 		AudioServer.add_bus_effect(idx, AudioEffectCapture.new())
 		AudioServer.set_bus_mute(idx, true)
 	_capture = AudioServer.get_bus_effect(idx, 0) as AudioEffectCapture
+	# 取り込みの溜めを長めにする(フレームが詰まった時に音を落とさないように)
+	_capture.buffer_length = 0.5
+	_apply_input_device()
 	_mic_player = AudioStreamPlayer.new()
 	_mic_player.bus = MIC_BUS
 	add_child(_mic_player)
-	if settings.mic_enabled and settings.test_tone_hz <= 0.0:
+	if not settings.mic_enabled:
+		return
+	if settings.mic_source == 0:
+		# 直接読む:デバイスの標本化周波数のまま受け取る(出力との周波数の違いで音が壊れない)
+		AudioServer.set_input_device_active(true)
+		_mix_rate = AudioServer.get_input_mix_rate()
+	else:
 		_mic_player.stream = AudioStreamMicrophone.new()
 		_mic_player.play()
 
@@ -78,6 +91,124 @@ func _setup_output() -> void:
 	add_child(_out_player)
 	_out_player.play()
 	_out_playback = _out_player.get_stream_playback()
+
+
+# ---------------------------------------------------------------- 録音デバイス
+
+func _apply_input_device() -> void:
+	var want := settings.input_device
+	if want != "" and want in AudioServer.get_input_device_list():
+		AudioServer.input_device = want
+
+
+## 録音デバイスの一覧("Default" は Windows の既定)
+func get_input_devices() -> PackedStringArray:
+	return AudioServer.get_input_device_list()
+
+
+func get_input_device() -> String:
+	return AudioServer.input_device
+
+
+## 録音デバイスを名前で選ぶ
+func set_input_device(device_name: String) -> void:
+	if device_name in AudioServer.get_input_device_list():
+		AudioServer.input_device = device_name
+		settings.input_device = "" if device_name == "Default" else device_name
+		input_device_changed.emit(device_name)
+
+
+## 次の録音デバイスに切り替える(F4)
+func cycle_input_device() -> void:
+	var list := AudioServer.get_input_device_list()
+	if list.is_empty():
+		return
+	var i := list.find(AudioServer.input_device)
+	set_input_device(list[(i + 1) % list.size()])
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_F4:
+			cycle_input_device()
+		elif event.physical_keycode == KEY_F5:
+			start_debug_recording()
+
+
+# ---------------------------------------------------------------- 確認用(マイクの音の様子)
+
+## 確認用の数値:取り込めている標本の数(毎秒)、途切れの回数(毎秒)、左右の音量(dB)と相関、
+## 声の高さの候補と谷の深さ
+var debug := { capture_rate = 0.0, gaps = 0.0, left_db = -100.0, right_db = -100.0, correlation = 0.0,
+	candidate_hz = -1.0, dip = 1.0 }
+var _dbg_frames := 0
+var _dbg_gaps := 0
+var _dbg_time := 0.0
+var _dbg_zero_run := 0
+var _dbg_l := 0.0
+var _dbg_r := 0.0
+var _dbg_lr := 0.0
+var _rec_left := 0.0
+var _rec := PackedVector2Array()
+
+
+func _debug_stats(buf: PackedVector2Array, delta: float) -> void:
+	var gap_len := int(_mix_rate * 0.002)
+	for f in buf:
+		_dbg_l += f.x * f.x
+		_dbg_r += f.y * f.y
+		_dbg_lr += f.x * f.y
+		if f.x == 0.0 and f.y == 0.0:
+			_dbg_zero_run += 1
+			if _dbg_zero_run == gap_len:
+				_dbg_gaps += 1
+		else:
+			_dbg_zero_run = 0
+	_dbg_frames += buf.size()
+	_dbg_time += delta
+	if _dbg_time >= 1.0:
+		var n := maxf(_dbg_frames, 1.0)
+		debug.capture_rate = _dbg_frames / _dbg_time
+		debug.gaps = _dbg_gaps / _dbg_time
+		debug.left_db = linear_to_db(maxf(sqrt(_dbg_l / n), 1e-6))
+		debug.right_db = linear_to_db(maxf(sqrt(_dbg_r / n), 1e-6))
+		debug.correlation = _dbg_lr / maxf(sqrt(_dbg_l * _dbg_r), 1e-9)
+		_dbg_frames = 0
+		_dbg_gaps = 0
+		_dbg_time = 0.0
+		_dbg_l = 0.0
+		_dbg_r = 0.0
+		_dbg_lr = 0.0
+	if _rec_left > 0.0:
+		_rec.append_array(buf)
+		_rec_left -= delta
+		if _rec_left <= 0.0:
+			_save_debug_recording()
+
+
+## これから3秒、ゲームが聞いているマイクの音をそのまま録って user://voice_debug.wav に保存する(F5)
+func start_debug_recording(seconds: float = 3.0) -> void:
+	_rec = PackedVector2Array()
+	_rec_left = seconds
+	print("[Voice] 確認用の録音を始めました(%.0f秒)" % seconds)
+
+
+func _save_debug_recording() -> void:
+	var bytes := PackedByteArray()
+	bytes.resize(_rec.size() * 4)
+	for i in range(_rec.size()):
+		bytes.encode_s16(i * 4, clampi(int(_rec[i].x * 32767.0), -32768, 32767))
+		bytes.encode_s16(i * 4 + 2, clampi(int(_rec[i].y * 32767.0), -32768, 32767))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = int(_mix_rate)
+	wav.stereo = true
+	wav.data = bytes
+	var path := ProjectSettings.globalize_path("user://voice_debug.wav")
+	var err := wav.save_to_wav(path)
+	print("[Voice] 確認用の録音を保存しました: %s (err=%d)" % [path, err])
+	debug_recording_saved.emit(path)
+	_rec = PackedVector2Array()
 
 
 # ---------------------------------------------------------------- 問い合わせ
@@ -135,15 +266,36 @@ func _read_input(delta: float) -> void:
 			_tone_phase += TAU * settings.test_tone_hz / _mix_rate
 			_acc.append(sin(_tone_phase) * settings.test_tone_volume)
 		return
-	if _capture == null or not settings.mic_enabled:
+	if not settings.mic_enabled:
 		return
-	var avail := _capture.get_frames_available()
-	if avail <= 0:
-		return
-	var buf := _capture.get_buffer(avail)
+	var buf: PackedVector2Array
+	if settings.mic_source == 0:
+		var rate := AudioServer.get_input_mix_rate()
+		if rate > 0 and rate != _mix_rate:
+			_mix_rate = rate
+		var n := AudioServer.get_input_frames_available()
+		if n <= 0:
+			return
+		buf = AudioServer.get_input_frames(n)
+	else:
+		if _capture == null:
+			return
+		var avail := _capture.get_frames_available()
+		if avail <= 0:
+			return
+		buf = _capture.get_buffer(avail)
+	_debug_stats(buf, delta)
 	var gain := db_to_linear(settings.mic_gain_db)
-	for f in buf:
-		_acc.append((f.x + f.y) * 0.5 * gain)
+	match settings.mic_channel:
+		1:
+			for f in buf:
+				_acc.append(f.x * gain)
+		2:
+			for f in buf:
+				_acc.append(f.y * gain)
+		_:
+			for f in buf:
+				_acc.append((f.x + f.y) * 0.5 * gain)
 
 
 func _finish_chunk(duration: float) -> void:
@@ -172,9 +324,14 @@ func _finish_chunk(duration: float) -> void:
 	_detector.min_hz = settings.pitch_min_hz
 	_detector.max_hz = settings.pitch_max_hz
 	_detector.threshold = settings.pitch_threshold
+	_detector.fallback_threshold = settings.pitch_fallback_threshold
 	_detector.median_count = settings.pitch_median
+	_detector.hold = settings.pitch_hold
 	var raw := _detector.detect(_pitch_buf) if loud and _pitch_buf.size() >= 400 else -1.0
-	var stable := _detector.push(raw)
+	if loud:
+		debug.candidate_hz = _detector.last_candidate_hz
+		debug.dip = _detector.last_dip
+	var stable := _detector.push(raw, Waves.clock)
 	if absf(stable - _pitch_hz) > 0.5:
 		_pitch_hz = stable
 		pitch_changed.emit(_pitch_hz, get_pitch_midi())
