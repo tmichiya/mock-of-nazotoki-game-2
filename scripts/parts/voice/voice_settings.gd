@@ -35,6 +35,23 @@ extends Resource
 @export var max_size := 2.2
 ## 声の波の形
 @export var voice_shape: WaveShape = preload("res://resources/wave_shapes/voice.tres")
+## 話している間、波面を描く間隔(秒)。声そのものは wave_interval ごとに送るが、描くのはこの間隔だけ
+@export var visual_interval := 0.5
+## 描いた声の波が出た瞬間に、届く範囲の外側の線を薄く描く
+@export var show_reach := true
+## 届く範囲の外側の線の色
+@export var reach_color := Color(1.0, 0.62, 0.25, 0.45)
+
+@export_group("声の波の大きさを保つ")
+## 話し始めからこの時間(秒)の一番大きな声を、その話の波の大きさにする
+@export var size_lock_time := 0.3
+## 今の大きさのこの倍より大きな声が出たら、大きさを上げる
+@export var size_rise_ratio := 1.3
+## 今の大きさのこの割合より小さい声が size_drop_time 秒続いたら、大きさを下げる(「ん」などで途切れないように)
+@export_range(0.0, 1.0) var size_drop_ratio := 0.4
+@export var size_drop_time := 0.6
+
+@export_group("声の波(続き)")
 ## 1台で2人を動かす時、マイクは何人目の声か
 @export_range(1, 2) var offline_mic_player := 1
 
@@ -52,7 +69,9 @@ extends Resource
 @export_range(1, 15) var pitch_median := 5
 
 @export_group("ゲーム内VC")
-## この距離(px)以内で同じ段(または手つなぎ中)なら、波を待たずにすぐ再生する
+## 相手の声は、声の波の届く範囲にいれば即座に聞こえる(壁や段で届かなければ聞こえない)。
+## 波が届くのを待って遅れて聞こえるのは、ラッパ(Trumpet の delay_voice)を使った時と、動物が吐き出した声だけ
+## 遅れて届く声(ラッパなど)でも、この距離(px)以内で同じ段なら、波を待たずにすぐ再生する
 @export var near_distance := 40.0
 ## 相手の声の音量(dB)
 @export_range(-40.0, 12.0) var playback_volume_db := 0.0

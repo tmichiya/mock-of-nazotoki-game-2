@@ -60,3 +60,8 @@ func visibility_check() -> void:
 		print("[AUTO] viewer=%d: only_p1=%s only_p2=%s linked_only=%s" % [v,
 			$SignP1/OnlyVisibleTo.should_show(), $SignP2/OnlyVisibleTo.should_show(), $SignLinked/OnlyVisibleTo.should_show()])
 	World.viewer_override = 0
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【汎用】S1とS2を二人で同時に踏むと扉が開く / A〜Dは組み合わせ(正解はAとC) / 看板は誰の画面に見えるかが違う(F3で切替)"

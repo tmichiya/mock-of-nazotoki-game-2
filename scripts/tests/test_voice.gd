@@ -21,6 +21,11 @@ func _steps() -> Array:
 		{ t = 0.05, call = "report", log = "440Hz loud" },
 		{ t = 1.0, call = "tone_off" },
 		{ t = 0.05, call = "report", log = "silent" },
+		{ t = 0.6, call = "tone_220_loud" },
+		{ t = 0.2, call = "tone_dip" },
+		{ t = 0.5, call = "tone_back" },
+		{ t = 0.05, call = "report_sizes", log = "loud, short quiet dip ('n'), loud: sizes should stay near the start" },
+		{ t = 0.2, call = "tone_off" },
 	]
 
 
@@ -46,6 +51,22 @@ func tone_off() -> void:
 	_tone(0.0001, 0.0)
 
 
+func tone_dip() -> void:
+	Voice.settings.test_tone_volume = 0.02
+
+
+func tone_back() -> void:
+	Voice.settings.test_tone_volume = 0.25
+
+
+func report_sizes() -> void:
+	var visible := 0
+	for w in Waves._waves:
+		if not w.p.get("hidden", false) and w.p.get("kind", "") == "voice":
+			visible += 1
+	print("[AUTO] sizes during phrase: %s  (drawn voice waves alive now: %d of %d)" % [_sizes.map(func(x): return snappedf(x, 0.01)), visible, Waves._waves.size()])
+
+
 func report() -> void:
 	var avg := 0.0
 	for s in _sizes:
@@ -55,3 +76,8 @@ func report() -> void:
 	print("[AUTO] volume_db=%.1f pitch=%.1fHz midi=%.1f (%s) waves=%d avg_size=%.2f" % [
 		Voice.get_volume_db(), Voice.get_pitch_hz(), Voice.get_pitch_midi(),
 		PitchDetector.midi_name(Voice.get_pitch_midi()), _sizes.size(), avg])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【マイク・声の波】話すとオレンジの位置から声の波。大きな声ほど大きな波。右上に音量と声の高さ(Hz・音名)"

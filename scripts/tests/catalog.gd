@@ -29,3 +29,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_4: $Extras/EFluff.emit()
 		KEY_5: $Frog/Noise.emit()
 		KEY_6: $Animals/E.emit()
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【部品カタログ】全部品。1:段のちがう音 2:楕円 3:重なる石 4:綿毛 5:カエル 6:動物 / F1 段番号 F2 波の範囲 F3 誰の目で見るか"

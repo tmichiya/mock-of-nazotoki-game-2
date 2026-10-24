@@ -38,6 +38,12 @@ var _pitch_hz := -1.0
 var _detector := PitchDetector.new()
 var _tone_phase := 0.0
 var _chunk_counter := 0
+# 話している間の、声の波の大きさと描く間隔
+var _utt_active := false
+var _utt_time := 0.0
+var _utt_size := 0.0
+var _quiet_time := 0.0
+var _visual_left := 0.0
 
 var _out_player: AudioStreamPlayer
 var _out_playback: AudioStreamGeneratorPlayback
@@ -342,6 +348,8 @@ func _finish_chunk(duration: float) -> void:
 
 
 func _set_speaking(v: bool) -> void:
+	if not v:
+		_utt_active = false
 	if v != _speaking:
 		_speaking = v
 		speaking_changed.emit(v)
@@ -373,25 +381,61 @@ func _send_voice(samples: PackedFloat32Array) -> void:
 		return
 	_chunk_counter += 1
 	var chunk_id := "%d-%d" % [Net.my_id(), _chunk_counter]
-	var size := lerpf(settings.min_size, settings.max_size, _volume01)
+	var size := _sustained_size(lerpf(settings.min_size, settings.max_size, _volume01))
 	var payload := { voice = chunk_id, audio = _encode(samples), speaker = p.player_index }
-	emit_voice_wave(p, size, payload, _pitch_hz)
+	_visual_left -= settings.wave_interval
+	var visible := _visual_left <= 0.0
+	if visible:
+		_visual_left = settings.visual_interval
+	emit_voice_wave(p, size, payload, _pitch_hz, visible)
 	voice_wave_sent.emit(size)
 
 
-## 声の波を出す(手つなぎ中は相手の位置・段からも同じ声の波を出す)
-func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float) -> void:
+## 話し続けている間は、話し始めの大きさを保つ(「ん」など音の小さい所で波が小さくなって途切れないように)。
+## はっきり大きな声になったら上げ、ずっと小さいままなら下げる
+func _sustained_size(raw: float) -> float:
+	var dt := settings.wave_interval
+	if not _utt_active:
+		_utt_active = true
+		_utt_time = 0.0
+		_utt_size = raw
+		_quiet_time = 0.0
+		_visual_left = 0.0
+		return raw
+	_utt_time += dt
+	if _utt_time <= settings.size_lock_time or raw > _utt_size * settings.size_rise_ratio:
+		_utt_size = maxf(_utt_size, raw)
+	if raw < _utt_size * settings.size_drop_ratio:
+		_quiet_time += dt
+		if _quiet_time >= settings.size_drop_time:
+			_utt_size = raw
+			_quiet_time = 0.0
+	else:
+		_quiet_time = 0.0
+	return _utt_size
+
+
+## 声の波を出す(手つなぎ中は相手の位置・段からも同じ声の波を出す)。
+## visible = 波面と届く範囲の線を描くか(描かなくても、受け取りと声の再生には使う)
+func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float, visible: bool = true) -> void:
 	var base := {
 		size = size, shape = settings.voice_shape.resource_path, source = p.source_id(),
-		payload = payload, pitch = pitch, kind = "voice",
+		payload = payload, pitch = pitch, kind = "voice", hidden = not visible,
 	}
 	var a := base.duplicate()
 	a.origin = p.global_position
 	a.level = roundi(p.height)
+	a.show_reach = visible and settings.show_reach
+	a.reach_color = settings.reach_color
 	if not p.voice_modifier.is_empty():
 		a.size = size * float(p.voice_modifier.get("size_scale", 1.0))
 		a.dir = p.voice_modifier.get("dir", p.facing)
 		a.spread = p.voice_modifier.get("spread", PI)
+		if p.voice_modifier.get("delay_voice", false):
+			# 道具(ラッパなど)を通した声は、波が届いた時に遅れて聞こえる
+			var pl: Dictionary = payload.duplicate()
+			pl.delayed = true
+			a.payload = pl
 	Waves.emit(a)
 	var partner := Hands.voice_partner(p) as Player
 	if partner:
@@ -425,11 +469,12 @@ func _on_node_added(n: Node) -> void:
 		n.wave_received_info.connect(_on_player_received.bind(n.get_parent()))
 
 
+## 波が届いた時に鳴らすのは、遅れて届く声(ラッパ・動物)だけ。普通の声は、出た瞬間に届く範囲かどうかで鳴らす
 func _on_player_received(info: Dictionary, listener: Player) -> void:
 	if not listener.is_local:
 		return
 	var payload: Dictionary = info.payload
-	if not payload.has("audio"):
+	if not payload.has("audio") or not _is_delayed(payload):
 		return
 	if not _should_hear(payload, listener):
 		return
@@ -439,7 +484,8 @@ func _on_player_received(info: Dictionary, listener: Player) -> void:
 	_play(payload, str(info.source), strength, Net.time() - float(info.emit_time), false)
 
 
-## 近い範囲なら、波を待たずにすぐ再生する
+## 声の波が出た瞬間:普通の声は、波の届く範囲に聞き手がいれば即座に鳴らす。
+## 遅れて届く声(ラッパ・動物)は、近い範囲だけ即座に鳴らし、他は波が届くのを待つ
 func _on_wave_emitted(p: Dictionary) -> void:
 	var payload: Dictionary = p.get("payload", {})
 	if not payload.has("audio"):
@@ -447,12 +493,17 @@ func _on_wave_emitted(p: Dictionary) -> void:
 	for listener: Player in World.get_local_players():
 		if not _should_hear(payload, listener):
 			continue
-		var speaker_pos: Vector2 = p.origin
-		var same_level := roundi(listener.height) == int(p.level)
-		if not same_level:
+		var lv := roundi(listener.height)
+		if _is_delayed(payload):
+			if lv == int(p.level) and listener.global_position.distance_to(p.origin) <= settings.near_distance:
+				_play(payload, str(p.source), 1.0, Net.time() - float(p.time), true)
 			continue
-		if listener.global_position.distance_to(speaker_pos) <= settings.near_distance:
+		if Waves.reaches(int(p.id), listener.global_position, 9.0, lv):
 			_play(payload, str(p.source), 1.0, Net.time() - float(p.time), true)
+
+
+static func _is_delayed(payload: Dictionary) -> bool:
+	return payload.get("delayed", false) or payload.has("relay")
 
 
 func _should_hear(payload: Dictionary, listener: Player) -> bool:

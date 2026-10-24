@@ -48,3 +48,8 @@ func report() -> void:
 	var a: Vector2 = World.get_player_by_index(1).global_position
 	var b: Vector2 = World.get_player_by_index(2).global_position
 	print("[AUTO] frog stage=%d noise=%.2f P1=(%.0f,%.0f) P2=(%.0f,%.0f) reset1=(%.0f,%.0f)" % [$Frog.stage, $Frog.noise, a.x, a.y, b.x, b.y, $Reset/RP1.global_position.x, $Reset/RP1.global_position.y])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【眠るカエル】1キー: 小さな音(寝返り) 2キー: 大きな音(怒る→やり直し)。カエルの下のメーターが騒がしさ"

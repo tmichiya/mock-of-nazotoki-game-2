@@ -59,3 +59,8 @@ func trumpet() -> void:
 func report() -> void:
 	var p1 := World.get_player_by_index(1) as Player
 	print("[AUTO] phone=%s voice_partner(P1)=%s trumpet_modifier=%s" % [$Phone.is_connected_now, Hands.voice_partner(p1) != null, p1.voice_modifier])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【綿毛・重なる点の石・糸電話・ラッパ】1: 綿毛を押す 2: EAとEBを同時に 3: ずらして / 糸電話は両端を握って張る / ラッパはつかむ"

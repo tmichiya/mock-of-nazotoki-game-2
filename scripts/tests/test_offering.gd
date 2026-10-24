@@ -58,3 +58,8 @@ func report() -> void:
 	print("[AUTO] shards=%s offerings=%s appear1.visible=%s disappear1.visible=%s move1=(%.0f,%.0f) appear2.visible=%s" % [
 		World.get_shared("shards"), World.get_shared("offerings"), $Appear1.visible, $Disappear1.visible,
 		$Move1.position.x, $Move1.position.y, $Appear2.visible])
+
+
+## 画面に出す説明(シーンに保存しないので、エディタで保存し直しても消えない)
+func _help() -> String:
+	return "【音のかけら・捧げる場所・島の変化】かけらを3つ拾って光る円に立つと歌の波。届いた物が段階1で変化する"
