@@ -7,6 +7,8 @@ extends PuzzlePart
 signal collected
 signal appeared
 
+## 拾った時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 最初は隠しておく(appear() で現れる)
 @export var hidden_at_start := false
 ## 拾える距離(px)
@@ -50,6 +52,7 @@ func _take() -> void:
 	visible = false
 	World.add_shared(counter_key, 1)
 	collected.emit()
+	Clears.clear(clear_event)
 	sync_state()
 
 

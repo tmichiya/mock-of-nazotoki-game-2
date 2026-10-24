@@ -22,6 +22,7 @@ func _ready() -> void:
 	collision_layer = Layers.bit(Layers.PROP_LAYER)
 	collision_mask = Layers.walker_mask()
 	add_to_group("props")
+	add_to_group("fluff")
 	height = World.height_at(global_position)
 	_net_pos = global_position
 

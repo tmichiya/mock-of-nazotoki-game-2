@@ -50,6 +50,8 @@ signal dropped_by_two
 @export var color := Color("b88a52")
 
 var angle := 0.0
+## 型(PoleSocket)にはまって動かない
+var locked := false
 var _holders: Array = [null, null]    # [Player, side]
 var _cooldown := 0.0
 var _net_center := Vector2.ZERO
@@ -76,6 +78,8 @@ func ends() -> Array:
 
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
+		return
+	if locked:
 		return
 	if not is_authority():
 		global_position = global_position.lerp(_net_center, clampf(delta * 12.0, 0.0, 1.0))
@@ -253,6 +257,36 @@ func _sync(delta: float) -> void:
 func _rpc_pose(c: Vector2, a: float) -> void:
 	_net_center = c
 	_net_angle = a
+
+
+## 型にはめる(動かなくなる)。release = 握っている手を離させる
+func lock_at(pos: Vector2, a: float, release: bool = true) -> void:
+	locked = true
+	global_position = pos
+	angle = a
+	_net_center = pos
+	_net_angle = a
+	for i in [0, 1]:
+		if _holders[i]:
+			var p: Player = _holders[i][0]
+			if is_instance_valid(p):
+				p.held_objects[_holders[i][1]] = null
+				release_hand(p, _holders[i][1])
+				if release:
+					p.release_all()
+			_holders[i] = null
+	_update_link()
+	if Net.is_online() and is_authority():
+		_rpc_lock.rpc(pos, a)
+	queue_redraw()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_lock(pos: Vector2, a: float) -> void:
+	locked = true
+	global_position = pos
+	angle = a
+	queue_redraw()
 
 
 func on_reset() -> void:

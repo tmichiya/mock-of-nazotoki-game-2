@@ -20,6 +20,7 @@ var builders := {
 	"offering": _build_offering,
 	"extras": _build_extras,
 	"catalog": _build_catalog,
+	"clear": _build_clear,
 }
 
 
@@ -607,3 +608,41 @@ func _build_catalog() -> void:
 	inst(root, "res://scenes/parts/sound_wave/debug_options.tscn")
 	add_common(root, Vector2(27, 22), Vector2(29, 22))
 	save(root, "res://scenes/catalog.tscn")
+
+
+# ---------------------------------------------------------------- クリアの窓口・ゴール
+
+func cpart(root: Node, kind: String, nm: String, c: Vector2) -> Node:
+	var n := inst(root, "res://scenes/parts/clear/%s.tscn" % kind, cell_center(c))
+	n.name = nm
+	return n
+
+
+func _build_clear() -> void:
+	var root := flat_world("res://scripts/tests/test_clear.gd", "", Vector2i(24, 14))
+	var fl := inst(root, "res://scenes/parts/props/fluff.tscn", cell_center(Vector2(5, 3)))
+	fl.name = "Fluff"
+	emitter(root, "EFluff", Vector2(3, 3), "generic", 1.6)
+	var goal := cpart(root, "fluff_goal", "Goal", Vector2(7, 3))
+	goal.clear_event = &"fluff_done"
+	var block := cpart(root, "clear_reactor", "BlockA", Vector2(10, 3))
+	block.listen.assign([&"fluff_done"])
+	block.action = 1
+	var pole := part(root, "long_pole", "Pole", Vector2(5, 9))
+	var sock := cpart(root, "pole_socket", "Socket", Vector2(12, 9))
+	sock.clear_event = &"pole_done"
+	var door := part(root, "door", "Door", Vector2(16, 9))
+	door.vertical = true
+	var opener := cpart(root, "clear_reactor", "OpenDoor", Vector2(16, 11))
+	opener.listen.assign([&"pole_done"])
+	opener.action = 4
+	opener.targets.assign([NodePath("../Door")])
+	var bridge := cpart(root, "clear_reactor", "Bridge", Vector2(19, 6))
+	bridge.listen.assign([&"fluff_done", &"pole_done"])
+	bridge.action = 0
+	var both := cpart(root, "clear_listener", "BothDone", Vector2.ZERO)
+	both.listen.assign([&"fluff_done", &"pole_done"])
+	var fx := cpart(root, "clear_fx", "Fx", Vector2(11, 6))
+	fx.listen_all = true
+	add_common(root, Vector2(3, 12), Vector2(5, 12))
+	save(root, "res://scenes/tests/test_clear.tscn")

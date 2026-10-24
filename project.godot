@@ -26,6 +26,7 @@ Net="*res://scripts/autoload/net.gd"
 Hands="*res://scripts/autoload/hands.gd"
 Waves="*res://scripts/autoload/waves.gd"
 Voice="*res://scripts/autoload/voice.gd"
+Clears="*res://scripts/autoload/clears.gd"
 
 [display]
 

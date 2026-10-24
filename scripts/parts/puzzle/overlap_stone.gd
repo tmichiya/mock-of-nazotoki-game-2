@@ -6,6 +6,8 @@ extends PuzzlePart
 signal lit
 signal dimmed
 
+## クリアした時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 同時とみなす時間の幅(秒)
 @export var window := 0.12
 ## 光っている時間(秒)
@@ -45,6 +47,7 @@ func _on_overlap() -> void:
 	if not glowing:
 		glowing = true
 		lit.emit()
+		Clears.clear(clear_event)
 		sync_state()
 	queue_redraw()
 

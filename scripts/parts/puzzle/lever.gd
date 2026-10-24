@@ -13,6 +13,10 @@ signal pull_failed
 
 enum Mode { WRAP, PINGPONG, CLAMP }
 
+## この位置になった時に「○○をクリア」を知らせる(-1 なら知らせない)
+@export var clear_at_position := -1
+## クリアした時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 段階の数
 @export_range(2, 16) var positions := 2:
 	set(v):
@@ -121,6 +125,8 @@ func set_position_index(i: int) -> void:
 	current = clampi(i, 0, positions - 1)
 	queue_redraw()
 	position_changed.emit(current)
+	if current == clear_at_position:
+		Clears.clear(clear_event)
 	sync_state()
 
 

@@ -12,6 +12,8 @@ signal count_changed(on_count: int)
 ## 全部オフに戻った(solved の後、次の判定に備えた時)
 signal cleared
 
+## クリアした時に知らせる「○○をクリア」の名前(空なら知らせない)
+@export var clear_event: StringName = &""
 ## 判定するスイッチ(FloorSwitch など、is_on と state_changed を持つ物)
 @export var switches: Array[NodePath] = []
 ## 正しい組み合わせ(switches と同じ順に、オンであるべきなら true)。空なら「全部オン」
@@ -71,6 +73,7 @@ func _on_changed(on: bool, s: Node) -> void:
 		if count == nodes.size():
 			_done = true
 			solved.emit()
+			Clears.clear(clear_event)
 		return
 	var need := pattern.count(true)
 	if count < need:
@@ -83,6 +86,7 @@ func _on_changed(on: bool, s: Node) -> void:
 	if ok:
 		_done = true
 		solved.emit()
+		Clears.clear(clear_event)
 	else:
 		wrong.emit()
 		_wait_clear = true
