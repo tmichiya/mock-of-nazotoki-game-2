@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="LevelStyle" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="LevelStyle" format=3 uid="uid://b7mf8qreho6rv"]
 
-[ext_resource type="Script" path="res://scripts/core/level_style.gd" id="1"]
+[ext_resource type="Script" uid="uid://c814t7xmmdchx" path="res://scripts/core/level_style.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
+floor_colors = PackedColorArray(0.30980393, 0.49019608, 0.3529412, 1, 0.47843137, 0.6039216, 0.33333334, 1, 0.7019608, 0.6392157, 0.41568628, 1, 0.7882353, 0.56078434, 0.37254903, 1, 0.65882355, 0.4509804, 0.43529412, 1, 0.54901963, 0.47843137, 0.65882355, 1, 0.43529412, 0.56078434, 0.7019608, 1, 0.84705883, 0.8156863, 0.7529412, 1)

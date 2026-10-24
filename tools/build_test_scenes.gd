@@ -351,7 +351,8 @@ func _build_pole() -> void:
 
 func _build_bird() -> void:
 	var root := flat_world("res://scripts/tests/test_bird.gd",
-		"【歌う鳥】歌うか瓶笛(近くで X / R)を鳴らすと、鳥が近い音で鳴き直す。3羽がド・ミ・ソをそろえると和音の判定役が成功を出す")
+		"【歌う鳥】鳥の近くで歌うか、瓶笛(近くで X / R)を鳴らすと、鳥が近い音で鳴き直す。3羽がド・ミ・ソをそろえると和音の判定役が成功を出す
+右上のメーターで、マイク(F4で切替)・音量・声の高さを確かめる。声が届いたのに高さが取れない時は Bird.heard(-1) が出る")
 	var notes := [["BirdA", Vector2(8, 3), PackedFloat32Array([60])], ["BirdB", Vector2(11, 3), PackedFloat32Array([64])], ["BirdC", Vector2(14, 3), PackedFloat32Array([67])]]
 	for b in notes:
 		var bird := part(root, "singing_bird", b[0], b[1])
@@ -362,7 +363,8 @@ func _build_bird() -> void:
 		var bottle := part(root, "instrument", bt[0], bt[1])
 		bottle.note = bt[2]
 		bottle.size = 1.4
-	add_common(root, Vector2(5, 10), Vector2(7, 10))
+	inst(root, "res://scenes/parts/voice/voice_monitor.tscn")
+	add_common(root, Vector2(11, 5), Vector2(12, 5))
 	save(root, "res://scenes/tests/test_bird.tscn")
 
 

@@ -15,6 +15,8 @@ signal speaking_changed(speaking: bool)
 signal voice_wave_sent(size: float)
 ## 相手(または動物が吐き出した)声を再生し始めた。delay は波が出てから再生までの秒数
 signal voice_played(source: String, delay: float, immediate: bool)
+## 録音デバイスを切り替えた
+signal input_device_changed(device_name: String)
 
 const MIC_BUS := "VoiceMic"
 
@@ -60,6 +62,7 @@ func _setup_mic() -> void:
 		AudioServer.add_bus_effect(idx, AudioEffectCapture.new())
 		AudioServer.set_bus_mute(idx, true)
 	_capture = AudioServer.get_bus_effect(idx, 0) as AudioEffectCapture
+	_apply_input_device()
 	_mic_player = AudioStreamPlayer.new()
 	_mic_player.bus = MIC_BUS
 	add_child(_mic_player)
@@ -78,6 +81,45 @@ func _setup_output() -> void:
 	add_child(_out_player)
 	_out_player.play()
 	_out_playback = _out_player.get_stream_playback()
+
+
+# ---------------------------------------------------------------- 録音デバイス
+
+func _apply_input_device() -> void:
+	var want := settings.input_device
+	if want != "" and want in AudioServer.get_input_device_list():
+		AudioServer.input_device = want
+
+
+## 録音デバイスの一覧("Default" は Windows の既定)
+func get_input_devices() -> PackedStringArray:
+	return AudioServer.get_input_device_list()
+
+
+func get_input_device() -> String:
+	return AudioServer.input_device
+
+
+## 録音デバイスを名前で選ぶ
+func set_input_device(device_name: String) -> void:
+	if device_name in AudioServer.get_input_device_list():
+		AudioServer.input_device = device_name
+		settings.input_device = "" if device_name == "Default" else device_name
+		input_device_changed.emit(device_name)
+
+
+## 次の録音デバイスに切り替える(F4)
+func cycle_input_device() -> void:
+	var list := AudioServer.get_input_device_list()
+	if list.is_empty():
+		return
+	var i := list.find(AudioServer.input_device)
+	set_input_device(list[(i + 1) % list.size()])
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
+		cycle_input_device()
 
 
 # ---------------------------------------------------------------- 問い合わせ
@@ -172,9 +214,11 @@ func _finish_chunk(duration: float) -> void:
 	_detector.min_hz = settings.pitch_min_hz
 	_detector.max_hz = settings.pitch_max_hz
 	_detector.threshold = settings.pitch_threshold
+	_detector.fallback_threshold = settings.pitch_fallback_threshold
 	_detector.median_count = settings.pitch_median
+	_detector.hold = settings.pitch_hold
 	var raw := _detector.detect(_pitch_buf) if loud and _pitch_buf.size() >= 400 else -1.0
-	var stable := _detector.push(raw)
+	var stable := _detector.push(raw, Waves.clock)
 	if absf(stable - _pitch_hz) > 0.5:
 		_pitch_hz = stable
 		pitch_changed.emit(_pitch_hz, get_pitch_midi())

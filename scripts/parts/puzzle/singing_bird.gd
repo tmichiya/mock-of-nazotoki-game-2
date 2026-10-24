@@ -8,6 +8,8 @@ extends PuzzlePart
 signal sang(midi: float)
 ## 声が届いたが、どの音にも近くなかった
 signal out_of_tune(midi: float)
+## 声(または楽器の音)が届いた。高さが取れていなければ midi = -1(その時は鳴き直さない)
+signal heard(midi: float)
 
 ## 鳴ける音(MIDI の音番号)。60=ド 62=レ 64=ミ 65=ファ 67=ソ 69=ラ 71=シ 72=上のド
 @export var notes := PackedFloat32Array([60, 64, 67]):
@@ -57,8 +59,11 @@ func _on_wave(info: Dictionary) -> void:
 		return
 	var hz: float = info.get("pitch", -1.0)
 	if hz <= 0.0:
+		heard.emit(-1.0)
 		return
-	hear_pitch(PitchDetector.hz_to_midi(hz))
+	var midi := PitchDetector.hz_to_midi(hz)
+	heard.emit(midi)
+	hear_pitch(midi)
 
 
 ## 音の高さ(MIDI)を聴かせる。シグナルから直接呼んでもよい

@@ -36,7 +36,7 @@ func _ready() -> void:
 		_meter = Label.new()
 		_meter.anchor_left = 1.0
 		_meter.anchor_right = 1.0
-		_meter.offset_left = -330
+		_meter.offset_left = -420
 		_meter.offset_top = 8
 		_meter.add_theme_font_size_override("font_size", 14)
 		_meter.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -49,10 +49,10 @@ func _process(_delta: float) -> void:
 		return
 	var bars := int(Voice.get_volume() * 20.0)
 	var midi := Voice.get_pitch_midi()
-	_meter.text = "音量 %5.1f dB [%s%s]\n声の高さ %s Hz (%s)\n%s" % [
-		Voice.get_volume_db(), "|".repeat(bars), " ".repeat(20 - bars),
+	_meter.text = "マイク: %s (F4 で切替)\n音量 %5.1f dB [%s%s] しきい値 %.0f dB\n声の高さ %s Hz (%s)\n%s" % [
+		Voice.get_input_device(), Voice.get_volume_db(), "|".repeat(bars), " ".repeat(20 - bars), Voice.settings.threshold_db,
 		"%.0f" % Voice.get_pitch_hz() if Voice.get_pitch_hz() > 0 else "-",
-		PitchDetector.midi_name(midi), "話している" if Voice.is_speaking() else ""]
+		PitchDetector.midi_name(midi), "話している(声の波を出している)" if Voice.is_speaking() else "(しきい値より小さいので声の波は出ていない)"]
 
 
 func get_pitch_hz() -> float:

@@ -8,7 +8,7 @@ extends TestSceneBase
 func _ready() -> void:
 	super._ready()
 	for b in ["BirdA", "BirdB", "BirdC"]:
-		watch(b, ["sang", "out_of_tune"])
+		watch(b, ["sang", "out_of_tune", "heard"])
 	watch("Chord", ["chord_completed", "progress_changed"])
 
 
@@ -26,7 +26,21 @@ func _steps() -> Array:
 		{ t = 1.2, log = "played C, E, G: expect 3 birds sing, chord_completed" },
 		{ t = 0.1, call = "off_pitch", log = "off-pitch voice (F#): expect out_of_tune" },
 		{ t = 0.6 },
+		{ t = 1.0, call = "sing_c", log = "voice C4 (261.6Hz) near BirdA: expect BirdA sings" },
+		{ t = 0.5, call = "sing_off" },
 	]
+
+
+func sing_c() -> void:
+	place(1, $BirdA.global_position + Vector2(0, 30))
+	Voice.settings.test_tone_hz = 261.63
+	Voice.settings.test_tone_volume = 0.25
+
+
+func sing_off() -> void:
+	Voice.settings.test_tone_hz = 0.0001
+	Voice.settings.test_tone_volume = 0.0
+	print("[AUTO] voice pitch=%.1f volume_db=%.1f" % [Voice.get_pitch_hz(), Voice.get_volume_db()])
 
 
 func to_bottle_c() -> void:

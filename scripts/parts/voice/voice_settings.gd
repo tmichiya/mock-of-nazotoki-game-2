@@ -4,6 +4,8 @@ extends Resource
 ## (VoiceMonitor を置けば、そのインスペクタからも開ける)。
 
 @export_group("マイク")
+## 使う録音デバイスの名前(空なら Windows の既定の録音デバイス)。実行中は F4 で切り替えられる
+@export var input_device := ""
 ## マイクの感度(dB。大きいほど小さな声でも拾う)
 @export_range(-20.0, 40.0, 0.5) var mic_gain_db := 0.0
 ## この音量(dB)を超えたら「話している」とみなす
@@ -36,7 +38,11 @@ extends Resource
 @export var pitch_min_hz := 75.0
 @export var pitch_max_hz := 1000.0
 ## 判定の厳しさ(小さいほど厳しい。0.1〜0.3)
-@export_range(0.05, 0.5) var pitch_threshold := 0.18
+@export_range(0.05, 0.5) var pitch_threshold := 0.25
+## これより浅い谷しか無い時は「高さが無い」とみなす(大きいほど雑音の多い声でも取る)
+@export_range(0.1, 0.8) var pitch_fallback_threshold := 0.45
+## 取れた高さを覚えておく時間(秒。息つぎ・子音で途切れないように)
+@export var pitch_hold := 0.4
 ## 何回分の結果の中央値をとるか(大きいほど安定、反応は遅い)
 @export_range(1, 15) var pitch_median := 5
 
