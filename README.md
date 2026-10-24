@@ -83,7 +83,7 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 - **寸法**: `resources/settings/world_config.tres` … マス 32×24px、1段 12px(画面)、1段の実際の高さ 18px(手つなぎの腕の長さなどの計算用)
 - **同期**: 部品の状態はホストが決めて相手に配る(相手が後から来ても送り直す)。プレイヤーの動きは各自の端末が決める(手つなぎ中だけホストが二人分を計算)
 - **シグナル**: 引数のあるシグナルの他に、扉の `open()` などにそのままつなげる引数なしのシグナル(`received`、`linked_simple` など)も用意した
-- **自動読み込み**: `World`(地形への問い合わせ・名簿・共有値)、`Net`(通信)、`Hands`(手つなぎ)、`Waves`(音の波)、`Voice`(マイク・VC)
+- **自動読み込み**: `World`(地形への問い合わせ・名簿・共有値)、`Net`(通信)、`Hands`(手つなぎ)、`Waves`(音の波)、`Voice`(マイク・VC)、`Clears`(「○○をクリア」の窓口)
 - 仮の見た目は各部品の `_draw()` にある。絵に差し替える時は、子に Sprite2D などを置いて `_draw()` を消してよい
 
 ---
@@ -244,6 +244,48 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 | `Trumpet` | 持つと声の波が扇形になり、向いた方向に遠くまで届く。持っている人の声は、波が届いた時に遅れて聞こえる(メガホン) | 広がり、大きさの倍率、握れる距離、`delay_voice`(遅れて届くか) | `picked_up` `put_down` |
 
 ---
+
+### P. 謎の組み立て:「○○をクリア」の窓口(`scenes/parts/clear/`、自動読み込み `Clears`)
+ステージを組む時の中心。ギミックは**名前を付けてクリアを知らせ**、障害物や演出は**名前でクリアを購読**して動く。
+クリアはホストが決めて相手にも配り、後から参加した相手にも送り直す。シーンが変わると全部消える。
+- **知らせる**: 各ギミックのインスペクタの `clear_event` に名前を書く(下の表)。それ以外のシグナルからは `ClearTrigger` を使う
+- **購読する**: `ClearReactor`(動かす)/ `ClearListener`(シグナルにする)/ `ClearFx`(演出)。コードからは `Clears.is_cleared(&"名前")`・シグナル `Clears.cleared(name)`・`Clears.reset(name)`
+- **取り消す**: `Clears.reset_clear(&"名前")`(やり直し用。ClearReactor は `revert_on_reset` で元に戻る)
+
+| 自動でクリアを知らせる部品 | いつ |
+| --- | --- |
+| `SwitchGroup` | 同時押し・組み合わせが合った |
+| `SyncButton` | 同じ組のボタンを時間内に全部踏んだ(組のどれかに書く) |
+| `ChordJudge` | 和音がそろった |
+| `SingingBird` | 正解の音(`correct_notes`)で鳴いた |
+| `Lever` | `clear_at_position` の位置になった |
+| `RotaryLever` | 1つ目の相手が `clear_angle_deg` の角度になった |
+| `FluffGoal` / `PoleSocket` | 綿毛が入った / 棒がはまった |
+| `OverlapStone` / `StringPhone` | 光った / 糸がつながった |
+| `FloorSwitch` / `Door` / `SoundShard` | 押された / 開いた / 拾った |
+| `OfferingPlace` / `IslandChangeReactor` | 捧げた(2回目からは「名前_2」…)/ 変化した |
+
+| 部品 | 置き方・役割 | 主な調整値 | シグナル・受け口 |
+| --- | --- | --- | --- |
+| `ClearTrigger` | どこでも。好きなシグナルを `fire()` / `fire_if_equals(値)` / `fire_if_true(真偽)` につなぐ | `clear_event`、`match_value`、`once` | `fired` / `fire()` `reset()` |
+| `ClearListener` | どこでも。購読した名前がそろったらシグナル | `listen`(名前の一覧)、`mode`(ALL / ANY) | `activated` `deactivated` `any_cleared(name)` |
+| `ClearReactor` | 動かしたい物の近くに置く。`targets` が空なら自分と子が動く(子が無ければ仮の箱) | `listen`、`mode`、`action`(APPEAR 現れる / DISAPPEAR 消える / MOVE 動く / FALL 落ちる / CALL メソッドを呼ぶ)、`targets`、`move_offset`、`fall_levels`、`duration`、`method`・`undo_method`、`revert_on_reset`、`toggle_collision` | `activated` `deactivated` |
+| `ClearFx` | 演出を出したい場所に置く。パーティクルと効果音(空なら仮のチャイム) | `listen` / `listen_all`、粒の数・色・速さ・絵、`stream`(効果音)、`volume_db` | `played` / `play()` |
+| `FluffGoal` | 綿毛のゴール(花)。決めた物が範囲に `hold_time` 秒いたらクリア | `clear_event`、`radius`、`required`、`target_group`(既定 `fluff`)、`consume` | `reached` `count_changed(n)` / `reset()` |
+| `PoleSocket` | 棒をはめる型。棒の真ん中が近く、向きが合うと、はまって動かなくなる | `clear_event`、`length`、`angle_deg`、`snap_distance`、`snap_angle_deg`、`release_holders` | `socketed` |
+
+例:扉を開ける=`ClearReactor`(action CALL、targets に扉、method `open`)/ 道をふさぐ岩を消す=`ClearReactor`(DISAPPEAR、岩を子に置く)/ 2つ解いたら橋が出る=`ClearReactor`(APPEAR、listen に2つ、mode ALL)
+
+### Q. 謎の部品(追加)
+| 部品 | 内容 | 主な調整値 | シグナル |
+| --- | --- | --- | --- |
+| `SyncButton` | だいたい同時に踏まないと駄目なボタン。同じ `sync_group` のボタンを `window` 秒以内に全部踏むと成功。色:待機 / 待っている(残り時間の輪が縮む)/ 失敗(`fail_cooldown` 秒押せない)/ 成功。組の数だけ点が並び、踏まれた分だけ光る | `sync_group`、`window`(1.5秒)、`fail_cooldown`(3秒)、`stay_success`、`clear_event`、4つの色 | `pressed` `waiting_started` `failed` `succeeded` / `reset()` |
+| `FixedMegaphone` | 地面に刺さった棒に固定された一方向メガホン。吹き口(後ろ)の近くで話すと、口の向きへ扇形に遠くまで、遅れて届く | `direction_deg`、`spread_deg`、`size_scale`、`delay_voice`、`use_radius`、`mouthpiece_offset` | `used_by(i)` `released_by(i)` |
+| `RotaryLever` | どんな物でも回せるレバー。つかんで左スティックを左右に倒している間、そちらへなめらかに回る(握っている人はその場から動かない)。離すと真ん中に戻る。`get_lever_rotation()`・`set_lever_rotation(ラジアン)` を持つ物はそれで、その他の Node2D は rotation で回す | `targets`、`rotate_speed_deg`、`limit_deg`、`required_players`、`clear_event`・`clear_angle_deg`・`clear_tolerance_deg` | `tilted(-1/0/1)` `rotation_changed(deg)` `pull_failed` |
+| `SingingBird`(追加) | 正解の音で鳴くと、金色・光の輪・頭の上の音符になる。和音の判定役がそろうと全部の鳥が喜ぶ | `correct_notes`、`stay_correct`・`correct_time`、`correct_color`、`clear_event` | `correct(midi)` / `celebrate()` `reset()` |
+| `VoiceEater`(追加) | 向きをなめらかに持つ(`facing_deg`)。回転レバーで回せる | — | — |
+
+確認用シーン:`scenes/tests/test_clear.tscn`(窓口・ゴール)、`scenes/tests/test_gimmicks.tscn`(同時押し・固定メガホン・回転レバー・鳥)
 
 ## 選んだ解釈(仕様が曖昧で、こちらで決めた所)
 

@@ -158,6 +158,7 @@ var _run_btn_prev := false
 var _release_prev := false
 var _stopped_time := 0.0
 var _grip_latch := [false, false]
+var _move_locks := {}          # 動けなくしている仕組みの名前 -> true
 var _bob_phase := 0.0
 
 @onready var visual: Node2D = $Visual
@@ -273,6 +274,29 @@ func is_running() -> bool:
 	return bool(input.get("running", false))
 
 
+## その場から動けなくする(レバーを握っている時など)。スティックは入力として残るので、物の側が使える。
+## owner_key は止めた仕組みの名前。ホストで呼ぶと、この体を動かしている端末にも伝わる
+func set_move_locked(owner_key: String, on: bool) -> void:
+	if on:
+		_move_locks[owner_key] = true
+	else:
+		_move_locks.erase(owner_key)
+	if Net.is_online() and multiplayer.is_server() and owner_peer != Net.my_id():
+		_rpc_move_lock.rpc_id(owner_peer, owner_key, on)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_move_lock(owner_key: String, on: bool) -> void:
+	if on:
+		_move_locks[owner_key] = true
+	else:
+		_move_locks.erase(owner_key)
+
+
+func is_move_locked() -> bool:
+	return not _move_locks.is_empty()
+
+
 ## 自分のつかんでいる物・つないでいる手を全部離す(離すボタンと同じ。この端末で操作している時だけ効く)
 func release_all() -> void:
 	_grip_latch = [false, false]
@@ -329,7 +353,7 @@ func _walk(delta: float) -> void:
 	var posing: bool = input.pose
 	_set_state(State.POSE if posing else State.WALK)
 	var want := Vector2.ZERO
-	if not posing:
+	if not posing and _move_locks.is_empty():
 		want = input.move * move_speed * (run_speed_scale if input.get("running", false) else 1.0)
 		if input.move.length() > 0.1:
 			facing = input.move.normalized()

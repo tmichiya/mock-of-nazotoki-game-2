@@ -445,6 +445,10 @@ func emit_voice_wave(p: Player, size: float, payload: Dictionary, pitch: float, 
 		a.reach = reach * float(p.voice_modifier.get("size_scale", 1.0))
 		a.dir = p.voice_modifier.get("dir", p.facing)
 		a.spread = p.voice_modifier.get("spread", PI)
+		if p.voice_modifier.has("origin"):
+			# 置いてあるメガホンなど:声はメガホンの口から出る
+			a.origin = p.voice_modifier.origin
+			a.level = int(p.voice_modifier.get("level", a.level))
 		if p.voice_modifier.get("delay_voice", false):
 			# 道具(ラッパなど)を通した声は、波が届いた時に遅れて聞こえる
 			var pl: Dictionary = payload.duplicate()

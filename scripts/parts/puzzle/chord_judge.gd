@@ -61,6 +61,10 @@ func _on_sang(midi: float) -> void:
 		_recent.clear()
 		chord_completed.emit()
 		Clears.clear(clear_event)
+		for path in birds:
+			var b := get_node_or_null(path)
+			if b and b.has_method("celebrate"):
+				b.celebrate()
 
 
 func reset() -> void:
