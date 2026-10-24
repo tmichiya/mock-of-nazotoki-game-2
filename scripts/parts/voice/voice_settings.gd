@@ -6,6 +6,8 @@ extends Resource
 @export_group("マイク")
 ## 使う録音デバイスの名前(空なら Windows の既定の録音デバイス)。実行中は F4 で切り替えられる
 @export var input_device := ""
+## マイクの左右どちらの音を使うか(MIX = 左右の平均。片方にしか声が入らない機材や、左右で打ち消し合う時は LEFT / RIGHT)
+@export_enum("MIX", "LEFT", "RIGHT") var mic_channel := 0
 ## マイクの感度(dB。大きいほど小さな声でも拾う)
 @export_range(-20.0, 40.0, 0.5) var mic_gain_db := 0.0
 ## この音量(dB)を超えたら「話している」とみなす

@@ -53,6 +53,11 @@ func _process(_delta: float) -> void:
 		Voice.get_input_device(), Voice.get_volume_db(), "|".repeat(bars), " ".repeat(20 - bars), Voice.settings.threshold_db,
 		"%.0f" % Voice.get_pitch_hz() if Voice.get_pitch_hz() > 0 else "-",
 		PitchDetector.midi_name(midi), "話している(声の波を出している)" if Voice.is_speaking() else "(しきい値より小さいので声の波は出ていない)"]
+	var d: Dictionary = Voice.debug
+	_meter.text += "\n--- 確認用 ---\n高さの候補 %s Hz  谷の深さ %.2f(%.2f 以下で採用)\n取り込み %.0f/秒(ミックス %.0f)途切れ %.0f回/秒\n左 %.0f dB  右 %.0f dB  左右の相関 %.2f(使う音: %s)\nF5: 3秒録って user://voice_debug.wav に保存" % [
+		"%.0f" % d.candidate_hz if d.candidate_hz > 0 else "-", d.dip, Voice.settings.pitch_fallback_threshold,
+		d.capture_rate, AudioServer.get_mix_rate(), d.gaps, d.left_db, d.right_db, d.correlation,
+		["左右の平均", "左", "右"][Voice.settings.mic_channel]]
 
 
 func get_pitch_hz() -> float:

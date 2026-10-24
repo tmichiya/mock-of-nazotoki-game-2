@@ -14,12 +14,17 @@ var median_count := 5
 var hold := 0.4
 
 var _history: Array = []   # [高さ, 時刻]
+## 確認用:直前の検出で一番深かった谷の深さ(0 に近いほどはっきりした高さ。1 に近いと高さが無い)と、その時の高さ
+var last_dip := 1.0
+var last_candidate_hz := -1.0
 
 
 ## samples から高さ(Hz)を求める。見つからなければ -1
 func detect(samples: PackedFloat32Array) -> float:
 	var tau_min := maxi(2, int(sample_rate / max_hz))
 	var tau_max := mini(samples.size() / 2, int(sample_rate / min_hz))
+	last_dip = 1.0
+	last_candidate_hz = -1.0
 	if tau_max <= tau_min + 2:
 		return -1.0
 	var w := samples.size() - tau_max
@@ -40,6 +45,10 @@ func detect(samples: PackedFloat32Array) -> float:
 		running += d[tau]
 		dn[tau] = d[tau] * tau / running if running > 0.0 else 1.0
 	var best := -1
+	for tau in range(tau_min, tau_max):
+		if dn[tau] < last_dip:
+			last_dip = dn[tau]
+			last_candidate_hz = sample_rate / tau
 	for tau in range(tau_min, tau_max):
 		if dn[tau] < threshold:
 			# 谷の底まで進む

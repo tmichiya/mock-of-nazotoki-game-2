@@ -46,7 +46,7 @@
 | 滑空 | Space / A | Enter |
 | 楽器 | R / X | `\` |
 
-F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見えない物」を誰の目で見るか(1台で2人の確認用)/ F4 マイク(録音デバイス)の切り替え
+F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見えない物」を誰の目で見るか(1台で2人の確認用)/ F4 マイク(録音デバイス)の切り替え / F5 ゲームが聞いているマイクの音を3秒録って `user://voice_debug.wav` に保存
 
 ### 1台で2つ起動して通信を試す
 1. エディタの「デバッグ > 複数インスタンスの実行をカスタマイズ」で、インスタンス数を2にする
@@ -159,11 +159,16 @@ F1 段番号の表示 / F2 音の波の届く範囲 / F3 「片方にしか見�
 - 波を出す: `Waves.emit({ origin, level, size, shape, source, color, dir, spread, payload, global })`
 
 ### F. マイクと声の波 `Voice`(自動読み込み)+ `VoiceMonitor`(`scenes/parts/voice/voice_monitor.tscn`)
-- **調整できる値**: `resources/settings/voice_settings.tres`(録音デバイス `input_device`(空なら Windows の既定。実行中は F4 で切替)、感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
+- **調整できる値**: `resources/settings/voice_settings.tres`(録音デバイス `input_device`(空なら Windows の既定。実行中は F4 で切替)、使う音 `mic_channel`(左右の平均/左/右)、感度 `mic_gain_db`、話しているとみなす音量、最大の音量、語尾の余韻、波を出す間隔、波の大きさの最小・最大、声の高さの範囲・判定の厳しさ・中央値の回数、VC の即時範囲など)。マイクが無い時は `test_tone_hz` で試験音
 - **問い合わせ**: `Voice.get_pitch_hz()` `Voice.get_pitch_midi()`(60=真ん中のド)`Voice.get_volume()`(0〜1)
 - **シグナル**(VoiceMonitor): `pitch_changed(hz, midi)` `speaking_changed(speaking)` `started_speaking` `stopped_speaking`。`show_meter` で画面右上に、使っているマイク・音量としきい値・声の高さ・声の波を出しているか
 - 声の高さ: 8kHz に間引いて自己相関(YIN 簡易版)。`pitch_threshold` を下回る谷が無くても、`pitch_fallback_threshold` より深い谷があれば採用する(雑音のある実際の声向け)。取れた高さは `pitch_hold` 秒覚えておき、その間の中央値をとる
 - **声が反応しない時**: メーターで (1) マイクが歌っている物か(違えば F4)、(2) 音量がしきい値を超えて「声の波を出している」になるか(超えなければ `mic_gain_db` を上げるか `threshold_db` を下げる)、(3) 声の高さが出るか、を確かめる。声の波は小さい声ほど届く距離が短いので、鳥などには近づいて歌う
+- **声の高さが出ない時**(メーターの「確認用」の行):
+  - 「谷の深さ」が採用の値(`pitch_fallback_threshold`)を少し超えるだけなら、その値を上げる。1 に近いままなら、音そのものに高さが無い(雑音か、音が壊れている)
+  - 「途切れ」が毎秒何回も出る、または「取り込み」がミックスの値より少ない時は、マイクの音が途中で抜けている
+  - 「左右の相関」が -1 に近い時は、左右の音が打ち消し合っている。`mic_channel` を左か右にする。片方だけ音量が大きい時も、そちらに合わせる
+  - F5 で録った `voice_debug.wav` を聞くと、ゲームが実際に聞いている音を確かめられる
 
 ### G. 通信とゲーム内VC `Net` / `Voice`
 - 接続: ENet、IP指定。`scenes/ui/connect_screen.tscn`(メインシーン)か起動引数
